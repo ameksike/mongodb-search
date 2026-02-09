@@ -1,0 +1,16 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./tmp/ollama:/root/.ollama
+    restart: unless-stopped
+    entrypoint: >
+      /bin/sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull phi3:mini &&
+        wait
+      "

@@ -1,0 +1,26 @@
+{
+  "name": "mongodb-search",
+  "version": "1.0.0",
+  "description": "MongoDB search demos",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ameksike/mongodb-search.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ameksike/mongodb-search/issues"
+  },
+  "homepage": "https://github.com/ameksike/mongodb-search#readme",
+  "dependencies": {
+    "@langchain/core": "^1.1.19",
+    "@langchain/ollama": "^1.2.2",
+    "langchain": "^1.2.18"
+  }
+}
