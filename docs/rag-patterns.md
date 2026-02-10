@@ -217,7 +217,44 @@ You can use:
 
 Chunking and embeddings are the foundation of retrieval quality.
 
-### 2.1 Classic Fixed-size Chunking with Overlap
+### 2.1 Naive Chunking and Naive RAG Baseline
+
+The **naive chunking + naive RAG** setup is the simplest possible end-to-end pattern. It is usually what you build first in a proof of concept.
+
+#### Architecture
+
+![Naive Chunking and Naive RAG Baseline](./img/naive_chunking_architecture_diagram_829e5917fcfe4b7f8a590a29cfd2b54b.png)
+
+- **Offline ingestion flow**
+  1. **Documents Source**: PDFs, docs, or raw text.
+  2. **Naive Chunking**: split each large document into **fixed-size character chunks** (for example, 512–2000 characters), without looking at semantic structure.
+  3. **Embedding Model**: for each chunk, call an embedding model (Voyage, OpenAI, etc.) to get a vector.
+  4. **MongoDB Atlas**: store one document per chunk in a collection with fields like `{ content, embedding, metadata }` and a **Vector Search index** on `embedding`.
+
+- **Online query-time flow**
+  1. **User Question**: comes into your API.
+  2. **Embedding Model**: compute the query embedding using the same model.
+  3. **Vector Search**: run a single `$vectorSearch` stage over the chunks collection, request top‑k chunks.
+  4. **Concatenation**: concatenate the retrieved chunks into one long context string.
+  5. **LLM Call**: send `{ question, concatenatedContext }` to the LLM to generate an answer.
+
+#### Characteristics
+
+- **Pros**
+  - Extremely simple to reason about and implement.
+  - Great as a **baseline** to compare against more advanced patterns.
+  - Good fit for quick demos and small knowledge bases.
+
+- **Cons / Limitations**
+  - Naive chunking ignores **semantic boundaries** (paragraphs, sections, code blocks), which can hurt retrieval quality.
+  - Concatenating many chunks often leads to **noisy prompts** and higher token cost.
+  - No notion of parent document, grading, query rewriting, or hybrid retrieval—just “top‑k chunks in, answer out”.
+
+This baseline pattern is useful as a reference point: every other pattern in this article seeks to improve one or more of its weaknesses (retrieval quality, context coherence, cost, or robustness).
+
+---
+
+### 2.2 Classic Fixed-size Chunking with Overlap
 
 **Pattern**
 
@@ -241,7 +278,7 @@ Chunking and embeddings are the foundation of retrieval quality.
 
 ---
 
-### 2.2 Semantic / Structure-aware Chunking
+### 2.3 Semantic / Structure-aware Chunking
 
 **Pattern**
 
@@ -266,7 +303,7 @@ You can:
 
 ---
 
-### 2.3 Contextualized Chunk Embeddings (voyage-context-3)
+### 2.4 Contextualized Chunk Embeddings (voyage-context-3)
 
 Traditional chunk embeddings:
 
