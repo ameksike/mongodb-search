@@ -182,7 +182,7 @@ const pipeline = [
 
 Vector similarity is fast but not perfect:
 
-- Top‑k results may contain **semantically close pero no exactos**.
+- Top‑k results may contain **semantically close but not exact matches**.
 - Sometimes you want *very high precision* in the final context you hand to the LLM.
 
 **Idea**
