@@ -6,8 +6,8 @@ import { seedDocuments } from '../data/seedDocuments.js';
 
 const {
     MONGODB_URI,
-    MONGODB_DB,
-    MONGODB_COLLECTION,
+    MONGODB_DB = 'rag',
+    MONGODB_COLLECTION = 'chunks',
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
