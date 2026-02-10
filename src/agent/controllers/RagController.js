@@ -10,7 +10,7 @@ export class RagController {
     }
 
     registerRoutes() {
-        this.router.post('/api/ask', this.handleAsk.bind(this));
+        this.router.post('/ask', this.handleAsk.bind(this));
     }
 
     async handleAsk(req, res) {
