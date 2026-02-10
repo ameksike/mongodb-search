@@ -1,3 +1,6 @@
+Simple Agent Demo
+
+```js
 import { ChatOllama } from "@langchain/ollama";
 
 try {
@@ -11,3 +14,4 @@ try {
 } catch (error) {
     console.error("Error al conectar con Ollama:", error);
 }
+```
