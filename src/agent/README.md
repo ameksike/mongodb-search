@@ -4,7 +4,7 @@ This document describes a Retrieval-Augmented Generation (RAG) architecture buil
 
 ## High-Level Architecture
 
-![](../../docs/rag_solution_architecture_diagram.png)
+![](../../docs/img/rag_solution_architecture_diagram.png)
 
 ---
 
