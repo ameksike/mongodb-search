@@ -1,3 +1,7 @@
+import { logger } from '../utils/logger.js';
+
+const COMPONENT = 'voyage';
+
 export class VoyageAIService {
 
     constructor({ apiUrl, apiKey, model, maxChunkChars }) {
@@ -14,6 +18,8 @@ export class VoyageAIService {
      * @returns {Promise<number[] | number[][]>} Single embedding or array of embeddings (same order as input)
      */
     async getEmbedding(input, options) {
+        const inputs = Array.isArray(input) ? input : [input];
+        logger.info(COMPONENT, 'Embedding request', { inputCount: inputs.length, model: options?.model || this.model });
         const response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
@@ -21,13 +27,14 @@ export class VoyageAIService {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                input: Array.isArray(input) ? input : [input],
+                input: inputs,
                 model: options?.model || this.model,
             })
         });
 
         if (!response.ok) {
             const body = await response.text();
+            logger.error(COMPONENT, 'API error', { status: response.status, body: body.slice(0, 200) });
             throw new Error(`VoyageAI error: ${response.status} - ${body}`);
         }
 

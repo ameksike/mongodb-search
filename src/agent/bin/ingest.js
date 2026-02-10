@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 import { SeedService } from '../services/SeedService.js';
 import { seedDocuments } from '../data/seedDocuments.js';
+import { logger } from '../utils/logger.js';
 
 const {
     MONGODB_URI,
@@ -27,18 +28,21 @@ const srvVoyage = new VoyageAIService({
     model: VOYAGE_MODEL,
 });
 
+const COMPONENT = 'ingest';
 async function main() {
     try {
+        logger.info(COMPONENT, 'Connecting to MongoDB', { db: MONGODB_DB, collection: MONGODB_COLLECTION });
         await client.connect();
         const collection = client.db(MONGODB_DB).collection(MONGODB_COLLECTION);
         const seedService = new SeedService(collection, srvVoyage);
         await seedService.run(seedDocuments);
     } finally {
         await client.close();
+        logger.info(COMPONENT, 'MongoDB connection closed');
     }
 }
 
 main().catch((err) => {
-    console.error(err);
+    logger.error(COMPONENT, 'Seed failed', { error: err.message });
     process.exit(1);
 });

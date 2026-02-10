@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { MongoClient } from 'mongodb';
 import { SetupService } from '../services/SetupService.js';
+import { logger } from '../utils/logger.js';
 
 // Environment variables (defaults for local/dev; override in .env)
 // Required: MONGODB_URI
@@ -15,6 +16,7 @@ const {
     ENABLE_VECTOR_VALIDATION = 'false',   // 'true' to enforce embedding array length in schema
 } = process.env;
 
+const COMPONENT = 'setup';
 if (!MONGODB_URI) {
     throw new Error('Missing MONGODB_URI');
 }
@@ -22,6 +24,7 @@ if (!MONGODB_URI) {
 const client = new MongoClient(MONGODB_URI);
 
 try {
+    logger.info(COMPONENT, 'Connecting to MongoDB', { db: MONGODB_DB, collection: MONGODB_COLLECTION });
     await client.connect();
     const db = client.db(MONGODB_DB);
     const setupService = new SetupService(db, {
@@ -31,10 +34,13 @@ try {
         similarity: VECTOR_SIMILARITY,
         enableValidation: ENABLE_VECTOR_VALIDATION.toLowerCase() === 'true',
     });
+    logger.info(COMPONENT, 'Running setup', { vectorIndexName: VECTOR_INDEX_NAME, dimensions: VECTOR_DIMENSIONS });
     await setupService.run();
+    logger.info(COMPONENT, 'Setup complete');
 } catch (err) {
-    console.error('[setup] Error:', err);
+    logger.error(COMPONENT, 'Setup failed', { error: err.message });
     process.exitCode = 1;
 } finally {
     await client.close();
+    logger.info(COMPONENT, 'MongoDB connection closed');
 }

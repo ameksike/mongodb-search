@@ -1,3 +1,7 @@
+import { logger } from '../utils/logger.js';
+
+const COMPONENT = 'rag';
+
 export class RagService {
 
     constructor(options) {
@@ -31,16 +35,16 @@ export class RagService {
     }
 
     async ask(question) {
-        // 1) Embed question with VoyageAI
+        logger.info(COMPONENT, 'Embedding question');
         const embedding = await this.srvVoyage.getEmbedding(question);
 
-        // 2) Vector search on MongoDB
+        logger.info(COMPONENT, 'Vector search', { k: 5 });
         const chunks = await this.retrieveRelevantChunks(embedding, 5);
+        logger.info(COMPONENT, 'Chunks retrieved', { count: chunks.length });
 
-        // 3) Call Ollama LLM via LangChain ChatOllama
+        logger.info(COMPONENT, 'Calling LLM');
         const response = await this.srvLLM.invoke(question, chunks);
 
-        // 4) Return answer + source chunks
         const answer = response.content;
 
         return {

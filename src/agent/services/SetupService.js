@@ -1,3 +1,7 @@
+import { logger } from '../utils/logger.js';
+
+const COMPONENT = 'setup';
+
 /**
  * Service responsible for ensuring the RAG collection and vector search index exist.
  * Used by bin/setup.js. Options are injected so the service stays testable and env-agnostic.
@@ -50,7 +54,7 @@ export class SetupService {
                 }
                 : {};
             await this.db.createCollection(this.collectionName, opts);
-            console.log(`Collection "${this.collectionName}" created${this.enableValidation ? ' with validator' : ''}.`);
+            logger.info(COMPONENT, 'Collection created', { collection: this.collectionName, withValidator: this.enableValidation });
             return;
         }
 
@@ -72,9 +76,9 @@ export class SetupService {
                     },
                 },
             });
-            console.log(`Validator updated on "${this.collectionName}".`);
+            logger.info(COMPONENT, 'Validator updated', { collection: this.collectionName });
         } else {
-            console.log(`Collection "${this.collectionName}" already exists.`);
+            logger.info(COMPONENT, 'Collection already exists', { collection: this.collectionName });
         }
     }
 
@@ -88,12 +92,12 @@ export class SetupService {
             const cursor = collection.listSearchIndexes();
             for await (const idx of cursor) existing.push(idx);
         } catch (err) {
-            console.warn('Could not list search indexes (e.g. older MongoDB version):', err.message);
+            logger.warn(COMPONENT, 'Could not list search indexes', { reason: err.message });
             return;
         }
 
         if (existing.some((idx) => idx.name === this.vectorIndexName)) {
-            console.log(`Vector Search index "${this.vectorIndexName}" already exists.`);
+            logger.info(COMPONENT, 'Vector Search index already exists', { index: this.vectorIndexName });
             return;
         }
 
@@ -112,7 +116,7 @@ export class SetupService {
                 ],
             },
         });
-        console.log(`Vector Search index "${this.vectorIndexName}" created (dim=${this.dimensions}, similarity=${this.similarity}).`);
+        logger.info(COMPONENT, 'Vector Search index created', { index: this.vectorIndexName, dimensions: this.dimensions, similarity: this.similarity });
     }
 
     /**

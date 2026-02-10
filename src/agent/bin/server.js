@@ -5,6 +5,7 @@ import { RagService } from '../services/RagService.js';
 import { OllamaService } from '../services/OllamaService.js';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 import { RagController } from '../controllers/RagController.js';
+import { logger } from '../utils/logger.js';
 
 const {
     MONGODB_URI,
@@ -17,7 +18,9 @@ const {
     PORT = 3000,
 } = process.env;
 
+const COMPONENT = 'server';
 try {
+    logger.info(COMPONENT, 'Starting', { port: PORT });
     if (!MONGODB_URI) throw new Error('Missing MONGODB_URI');
     if (!MONGODB_DB) throw new Error('Missing MONGODB_DB');
     if (!MONGODB_COLLECTION) throw new Error('Missing MONGODB_COLLECTION');
@@ -32,6 +35,7 @@ try {
 
     const mongoClient = new MongoClient(MONGODB_URI);
     await mongoClient.connect();
+    logger.info(COMPONENT, 'MongoDB connected', { db: MONGODB_DB });
 
     const ragService = new RagService({
         db: mongoClient.db(MONGODB_DB),
@@ -56,9 +60,9 @@ try {
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
     app.listen(PORT, () => {
-        console.log(`RAG API listening on http://localhost:${PORT}`);
+        logger.info(COMPONENT, 'Listening', { url: `http://localhost:${PORT}`, health: '/api/health', ask: '/api/rag/ask' });
     });
 } catch (err) {
-    console.error('Failed to bootstrap server:', err);
+    logger.error(COMPONENT, 'Bootstrap failed', { error: err.message });
     process.exit(1);
 }
