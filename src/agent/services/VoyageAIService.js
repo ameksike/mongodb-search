@@ -6,7 +6,13 @@ export class VoyageAIService {
         this.model = model;
     }
 
-    async getEmbedding(data, options) {
+    /**
+     * Get embeddings for one or more texts (single request). Helps stay under rate limits.
+     * @param {string | string[]} input - Single text or array of texts
+     * @param {{ model?: string }} [options]
+     * @returns {Promise<number[] | number[][]>} Single embedding or array of embeddings (same order as input)
+     */
+    async getEmbedding(input, options) {
         const response = await fetch(this.apiUrl, {
             method: 'POST',
             headers: {
@@ -14,7 +20,7 @@ export class VoyageAIService {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                input: data,
+                input: Array.isArray(input) ? input : [input],
                 model: options?.model || this.model,
             }),
         });
@@ -24,7 +30,8 @@ export class VoyageAIService {
             throw new Error(`VoyageAI error: ${response.status} - ${body}`);
         }
 
-        const data = await response.json();
-        return data.data[0].embedding;
+        const result = await response.json();
+        const embeddings = result.data.map((d) => d.embedding);
+        return Array.isArray(input) ? embeddings : embeddings[0];
     }
 }
