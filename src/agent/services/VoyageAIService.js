@@ -1,9 +1,10 @@
 export class VoyageAIService {
 
-    constructor({ apiUrl, apiKey, model }) {
+    constructor({ apiUrl, apiKey, model, maxChunkChars }) {
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
         this.model = model;
+        this.maxChunkChars = maxChunkChars ?? 800;
     }
 
     /**
@@ -22,7 +23,7 @@ export class VoyageAIService {
             body: JSON.stringify({
                 input: Array.isArray(input) ? input : [input],
                 model: options?.model || this.model,
-            }),
+            })
         });
 
         if (!response.ok) {
@@ -33,5 +34,44 @@ export class VoyageAIService {
         const result = await response.json();
         const embeddings = result.data.map((d) => d.embedding);
         return Array.isArray(input) ? embeddings : embeddings[0];
+    }
+
+    /**
+     * Simple text chunking by character count. Adjust as needed for better semantic chunks.
+     * @param {string} text
+     * @returns {string[]}
+     */
+    chunkText(text) {
+        const chunks = [];
+        let offset = 0;
+        while (offset < text.length) {
+            chunks.push(text.slice(offset, offset + this.maxChunkChars));
+            offset += this.maxChunkChars;
+        }
+        return chunks;
+    }
+
+    /**
+     * Naive chunking: splits text into fixed-size chunks and gets embeddings for each chunk.
+     * @param {{ sourceId: string, title: string, url: string, text: string }} doc
+     */
+    async getNaiveChunking(doc) {
+        const { sourceId, title, url, text } = doc;
+        const rawChunks = this.chunkText(text);
+        const docsToInsert = [];
+
+        for (let i = 0; i < rawChunks.length; i++) {
+            const chunkContent = rawChunks[i];
+            const embedding = await this.getEmbedding(chunkContent);
+            docsToInsert.push({
+                sourceId,
+                chunkId: i,
+                content: chunkContent,
+                metadata: { title, url },
+                embedding,
+            });
+        }
+
+        return docsToInsert;
     }
 }

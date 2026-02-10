@@ -1,69 +1,39 @@
 /**
- * Service responsible for seeding the RAG collection: chunk text, embed via VoyageAI, insert into MongoDB.
- * Reuses embedding logic only; no LLM. Used by ingest.js.
+ * Service responsible for seeding the RAG collection: embed full document text via VoyageAI, insert into MongoDB.
+ * One embedding per document (full text); one batch API call for all documents, one insertMany. No chunking.
  */
 export class SeedService {
 
     /**
      * @param {import('mongodb').Collection} collection
      * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} srvVoyage
-     * @param {{ maxChunkChars?: number }} [options]
      */
-    constructor(collection, srvVoyage, options = {}) {
+    constructor(collection, srvVoyage) {
         this.collection = collection;
         this.srvVoyage = srvVoyage;
-        this.maxChunkChars = options.maxChunkChars ?? 800;
     }
 
     /**
-     * @param {string} text
-     * @returns {string[]}
-     */
-    chunkText(text) {
-        const chunks = [];
-        let offset = 0;
-        while (offset < text.length) {
-            chunks.push(text.slice(offset, offset + this.maxChunkChars));
-            offset += this.maxChunkChars;
-        }
-        return chunks;
-    }
-
-    /**
-     * Ingest one document: chunk, embed, insert.
-     * @param {{ sourceId: string, title: string, url: string, text: string }} doc
-     */
-    async ingestDocument(doc) {
-        const { sourceId, title, url, text } = doc;
-        const rawChunks = this.chunkText(text);
-        const docsToInsert = [];
-
-        for (let i = 0; i < rawChunks.length; i++) {
-            const chunkContent = rawChunks[i];
-            const embedding = await this.srvVoyage.getEmbedding(chunkContent);
-            docsToInsert.push({
-                sourceId,
-                chunkId: i,
-                content: chunkContent,
-                metadata: { title, url },
-                embedding,
-            });
-        }
-
-        if (docsToInsert.length > 0) {
-            await this.collection.insertMany(docsToInsert);
-            console.log(`Ingested ${docsToInsert.length} chunks for sourceId=${sourceId}`);
-        }
-    }
-
-    /**
-     * Ingest all documents in order.
+     * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
      * @param {{ sourceId: string, title: string, url: string, text: string }[]} documents
      */
     async run(documents) {
-        for (const doc of documents) {
-            await this.ingestDocument(doc);
+        if (documents.length === 0) {
+            console.log('Seed complete: 0 documents.');
+            return;
         }
-        console.log(`Seed complete: ${documents.length} documents ingested.`);
+
+        const texts = documents.map((d) => d.text);
+        const embeddings = await this.srvVoyage.getEmbedding(texts);
+
+        const docsToInsert = documents.map((doc, i) => ({
+            sourceId: doc.sourceId,
+            content: doc.text,
+            metadata: { title: doc.title, url: doc.url },
+            embedding: embeddings[i],
+        }));
+
+        await this.collection.insertMany(docsToInsert);
+        console.log(`Seed complete: ${documents.length} documents ingested (1 API call).`);
     }
 }
