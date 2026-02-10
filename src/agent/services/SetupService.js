@@ -97,20 +97,19 @@ export class SetupService {
             return;
         }
 
+        // Atlas Vector Search requires definition.fields (array) with path and numDimensions
         await collection.createSearchIndex({
             name: this.vectorIndexName,
             type: 'vectorSearch',
             definition: {
-                mappings: {
-                    dynamic: false,
-                    fields: {
-                        embedding: {
-                            type: 'vector',
-                            dimensions: this.dimensions,
-                            similarity: this.similarity,
-                        },
+                fields: [
+                    {
+                        type: 'vector',
+                        path: 'embedding',
+                        numDimensions: this.dimensions,
+                        similarity: this.similarity,
                     },
-                },
+                ],
             },
         });
         console.log(`Vector Search index "${this.vectorIndexName}" created (dim=${this.dimensions}, similarity=${this.similarity}).`);
