@@ -73,7 +73,7 @@ Ingest chunks documents so the RAG has content to search. From the project root:
 npm run agent:ingest
 ```
 
-By default, `ingest.js` inserts a single example document. To ingest your own content, edit `src/agent/ingest.js` and pass one or more objects with this shape to `ingestDocument`:
+By default, the ingest script loads seed documents from `src/agent/data/seedDocuments.js`. To add your own content, add entries to that array (or run a custom script that uses `SeedService` from `src/agent/services/SeedService.js`). Each document must have this shape:
 
 ```js
 {

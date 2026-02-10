@@ -1,4 +1,3 @@
-// scripts/setupVectorSearch.js
 import 'dotenv/config';
 import { MongoClient } from 'mongodb';
 
@@ -30,7 +29,6 @@ async function ensureCollection(db) {
         const options = {};
 
         if (USE_VALIDATION) {
-            // Validator simple: asegura que embedding es un array de números
             options.validator = {
                 $jsonSchema: {
                     bsonType: 'object',
@@ -40,7 +38,7 @@ async function ensureCollection(db) {
                             bsonType: 'array',
                             minItems: DIM,
                             maxItems: DIM,
-                            items: { bsonType: 'double' }, // o "number" si usas varios tipos
+                            items: { bsonType: 'double' },
                         },
                     },
                 },
@@ -50,7 +48,6 @@ async function ensureCollection(db) {
         await db.createCollection(MONGODB_COLLECTION, options);
         console.log(`Collection "${MONGODB_COLLECTION}" created${USE_VALIDATION ? ' with validator' : ''}.`);
     } else if (USE_VALIDATION) {
-        // Opcional: aplica/modifica validator si ya existe
         await db.command({
             collMod: MONGODB_COLLECTION,
             validator: {
@@ -82,7 +79,6 @@ async function ensureVectorSearchIndex(collection) {
             existing.push(idx);
         }
     } catch (err) {
-        // ignore error if listSearchIndexes is not supported (e.g. older MongoDB version)
         console.warn('Could not list search indexes (maybe older MongoDB version?):', err.message);
         return;
     }
@@ -121,11 +117,11 @@ async function main() {
         await client.connect();
         const db = client.db(MONGODB_DB);
 
-        await j(db);
+        await ensureCollection(db);
         const collection = db.collection(MONGODB_COLLECTION);
         await ensureVectorSearchIndex(collection);
     } catch (err) {
-        console.error('[setupVectorSearch] Error:', err);
+        console.error('[setup] Error:', err);
         process.exitCode = 1;
     } finally {
         await client.close();

@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
 import { MongoClient } from 'mongodb';
-import { RagService } from './services/RagService.js';
-import { OllamaService } from './services/OllamaService.js';
-import { VoyageAIService } from './services/VoyageAIService.js';
-import { RagController } from './controllers/RagController.js';
+import { RagService } from '../services/RagService.js';
+import { OllamaService } from '../services/OllamaService.js';
+import { VoyageAIService } from '../services/VoyageAIService.js';
+import { RagController } from '../controllers/RagController.js';
 
 const {
     MONGODB_URI,
@@ -58,7 +58,6 @@ try {
     app.listen(PORT, () => {
         console.log(`RAG API listening on http://localhost:${PORT}`);
     });
-
 } catch (err) {
     console.error('Failed to bootstrap server:', err);
     process.exit(1);
