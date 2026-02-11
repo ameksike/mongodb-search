@@ -10,12 +10,13 @@ export class RagService {
         this.srvLLM = options?.srvLLM;
     }
 
-    async retrieveRelevantChunks(embedding, k = 5) {
+    async retrieveRelevantChunks(options) {
+        const { embedding, k = 5, path = 'embedding' } = options || {};
         const pipeline = [
             {
                 $vectorSearch: {
+                    path,
                     index: 'rag_vector_index',
-                    path: 'embedding',
                     queryVector: embedding,
                     numCandidates: 200,
                     limit: k,
@@ -39,7 +40,7 @@ export class RagService {
         const embedding = await this.srvVoyage.getEmbedding(question);
 
         logger.info(COMPONENT, 'Vector search', { k: 5 });
-        const chunks = await this.retrieveRelevantChunks(embedding, 5);
+        const chunks = await this.retrieveRelevantChunks({ embedding, k: 5 });
         logger.info(COMPONENT, 'Chunks retrieved', { count: chunks.length });
 
         logger.info(COMPONENT, 'Calling LLM');
