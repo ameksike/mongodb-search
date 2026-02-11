@@ -19,7 +19,7 @@ export class SeedService {
 
     /**
      * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ sourceId: string, title: string, url: string, text: string }[]} documents
+     * @param {{ title: string, url: string, text: string, coverImage: string }[]} documents
      */
     async run(documents) {
         if (documents.length === 0) {
@@ -32,9 +32,8 @@ export class SeedService {
         logger.info(COMPONENT, 'Embeddings received', { count: embeddings.length });
 
         const docsToInsert = documents.map((doc, i) => ({
-            sourceId: doc.sourceId,
             content: doc.text,
-            metadata: { title: doc.title, url: doc.url },
+            metadata: { title: doc.title, url: doc.url, coverImage: doc.coverImage },
             embedding: embeddings[i],
         }));
 
