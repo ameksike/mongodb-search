@@ -7,7 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { seedDocuments } from '../data/films.js';
+import { films as seedDocuments } from '../data/films.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IMG_DIR = path.join(__dirname, 'img');

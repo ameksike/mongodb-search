@@ -3,7 +3,7 @@
  * Cover images are stored in src/agent/data/img/ (run download-posters.js to fetch them).
  * @type {{ title: string, url: string, text: string, coverImage: string }[]}
  */
-export const seedDocuments = [
+export const films = [
     { title: 'The Shawshank Redemption', url: 'https://example.com/movies/001', coverImage: 'img/poster-001.jpg', text: 'The Shawshank Redemption. A banker is wrongly convicted of murder and sentenced to life at Shawshank prison. He forms a deep friendship with a fellow inmate and finds hope through acts of decency and a long-term plan for escape.' },
     { title: 'The Godfather', url: 'https://example.com/movies/002', coverImage: 'img/poster-002.jpg', text: 'The Godfather. The aging patriarch of an organized crime dynasty transfers control to his reluctant son. A saga of family, power, and betrayal in the Italian-American mafia in the 1940s and 1950s.' },
     { title: 'The Dark Knight', url: 'https://example.com/movies/003', coverImage: 'img/poster-003.jpg', text: 'The Dark Knight. Batman must accept one of the greatest psychological and physical tests to fight injustice. With the help of allies, he faces the Joker, a criminal mastermind who seeks to plunge Gotham into chaos.' },
