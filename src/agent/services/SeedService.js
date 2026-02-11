@@ -28,18 +28,22 @@ export class SeedService {
         }
         logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
         const texts = documents.map((d) => d.text);
-        const embeddings = await this.srvVoyage.getEmbedding(texts);
-        logger.info(COMPONENT, 'Embeddings received', { count: embeddings.length });
+        const [textEmbeddings, imageEmbeddings] = await Promise.all([
+            this.srvVoyage.getEmbedding(texts),
+            null
+        ]);
+        
+        logger.info(COMPONENT, 'Text Embeddings received', { count: textEmbeddings?.length ?? 0 });
+        logger.info(COMPONENT, 'Image Embeddings received', { count: imageEmbeddings?.length ?? 0 });
 
         const docsToInsert = documents.map((doc, i) => {
-            const textVector = embeddings[i];
             return {
                 title: doc.title,
                 description: doc.text,
                 coverImage: doc.coverImage ?? doc.url,
                 embedding: {
-                    text: textVector,
-                    image: doc.imageEmbedding ?? textVector,
+                    text: textEmbeddings ? textEmbeddings[i] : undefined,
+                    image: imageEmbeddings ? imageEmbeddings[i] : undefined
                 },
             };
         });

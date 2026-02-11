@@ -11,7 +11,7 @@ const {
     MONGODB_DB = 'rag',                          // Database name
     MONGODB_COLLECTION = 'films',                // Collection to store documents with embeddings
     MONGODB_VECTOR_VALIDATION = 'true',          // 'true' to enforce schema (title, description, coverImage, embedding.text, embedding.image)
-    VECTOR_INDEX_NAME = 'rag_vector_index',      // Base name for vector indexes; actual index names will be `${VECTOR_INDEX_NAME}_text_index` and `${VECTOR_INDEX_NAME}_image_index`
+    VECTOR_INDEX_NAME = 'rag_vector',            // Base name for vector indexes; actual index names will be `${VECTOR_INDEX_NAME}_text_index` and `${VECTOR_INDEX_NAME}_image_index`
     VECTOR_DIMENSIONS = '1024',                  // Used for both if VECTOR_DIMENSIONS_TEXT/IMAGE not set
     VECTOR_DIMENSIONS_TEXT,                      // Text embedding size (e.g. Voyage 1024)
     VECTOR_DIMENSIONS_IMAGE,                     // Image embedding size (e.g. CLIP 512)
