@@ -7,6 +7,7 @@
     - [Hybrid Search](https://www.mongodb.com/docs/atlas/atlas-search/tutorial/hybrid-search/)
     - [Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/)
     - [Supercharge Self-Managed Apps With Search and Vector Search Capabilities](https://www.mongodb.com/company/blog/product-release-announcements/supercharge-self-managed-apps-search-vector-search-capabilities)
+    - [Atlas Hybrid Search Tester](https://hybrid.sa.prod.corp.mongodb.com/)
 - AI
     - [LangChain](https://docs.langchain.com/oss/javascript/langchain/quickstart)
         - [LangChain Chat](https://chat.langchain.com/)

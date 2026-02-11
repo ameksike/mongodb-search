@@ -7,6 +7,7 @@ export class OllamaService {
         options.model = options.model || 'phi3:mini';
         options.baseUrl = options.baseUrl || 'http://127.0.0.1:11434';
         this.chatOllama = new ChatOllama(options);
+        this.call = options.call ?? true;
     }
 
     async generateAnswer(question, context) {
@@ -18,8 +19,9 @@ export class OllamaService {
     buildContext(chunks) {
         return chunks
             .map((chunk, idx) => {
-                const title = (chunk.metadata && chunk.metadata.title) || `Chunk ${idx + 1}`;
-                return `### ${title}\n${chunk.content}`;
+                const title = chunk.title || (chunk.metadata?.title) || `Chunk ${idx + 1}`;
+                const body = chunk.description ?? chunk.content ?? '';
+                return `### ${title}\n${body}`;
             })
             .join('\n\n');
     }
@@ -46,6 +48,10 @@ ${context}
     }
 
     invoke(question, chunks) {
+        if (!this.call) {
+            return { content: 'LLM call is disabled' };
+        }
+
         const systemPrompt = this.getSystemPrompt();
         const userPrompt = this.getUserPrompt(question, chunks);
 

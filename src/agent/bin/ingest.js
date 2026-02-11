@@ -8,7 +8,7 @@ import { logger } from '../utils/logger.js';
 const {
     MONGODB_URI,
     MONGODB_DB = 'rag',
-    MONGODB_COLLECTION = 'chunks',
+    MONGODB_COLLECTION = 'films',
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,

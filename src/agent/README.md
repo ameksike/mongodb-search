@@ -36,7 +36,7 @@ This document describes a Retrieval-Augmented Generation (RAG) architecture buil
    VOYAGE_API_KEY=your-voyage-api-key
    VOYAGE_MODEL=voyage-4-large
 
-   OLLAMA_MODEL=phi3:mini
+   LLM_MODEL=phi3:mini
    ```
 
    Replace placeholders with your real MongoDB URI, VoyageAI key, and desired Ollama model.

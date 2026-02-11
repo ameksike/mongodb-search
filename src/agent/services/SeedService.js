@@ -19,7 +19,7 @@ export class SeedService {
 
     /**
      * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ title: string, url: string, text: string, coverImage: string }[]} documents
+     * @param {{ title: string, url: string, text: string, coverImage: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
      */
     async run(documents) {
         if (documents.length === 0) {
@@ -31,11 +31,18 @@ export class SeedService {
         const embeddings = await this.srvVoyage.getEmbedding(texts);
         logger.info(COMPONENT, 'Embeddings received', { count: embeddings.length });
 
-        const docsToInsert = documents.map((doc, i) => ({
-            content: doc.text,
-            metadata: { title: doc.title, url: doc.url, coverImage: doc.coverImage },
-            embedding: embeddings[i],
-        }));
+        const docsToInsert = documents.map((doc, i) => {
+            const textVector = embeddings[i];
+            return {
+                title: doc.title,
+                description: doc.text,
+                coverImage: doc.coverImage ?? doc.url,
+                embedding: {
+                    text: textVector,
+                    image: doc.imageEmbedding ?? textVector,
+                },
+            };
+        });
 
         await this.collection.insertMany(docsToInsert);
         logger.info(COMPONENT, 'Ingest complete', { documents: documents.length, apiCalls: 1 });
