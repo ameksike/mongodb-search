@@ -1,3 +1,4 @@
+import { log } from 'console';
 import { logger } from '../utils/logger.js';
 
 const COMPONENT = 'setup';
@@ -99,6 +100,9 @@ export class SetupService {
     async ensureVectorSearchIndex() {
         const collection = this.db.collection(this.collectionName);
         const existingIndexes = await this.listSearchIndexes(collection);
+
+        await this.cleanSearchIndexes(collection);
+
         if (this.indexType === 'composed') {
             await this.createComposedIndex(collection, existingIndexes);
         }
@@ -234,12 +238,25 @@ export class SetupService {
     async listSearchIndexes(collection) {
         const existing = [];
         try {
-            const cursor = collection.listSearchIndexes();
-            for await (const idx of cursor) existing.push(idx);
+            const indexes = collection.listSearchIndexes();
+            for await (const idx of indexes) existing.push(idx);
         } catch (err) {
             logger.warn(COMPONENT, 'Could not list search indexes', { reason: err.message });
             return;
         }
+        logger.info(COMPONENT, 'Existing Indexes', { indexes: existing });
         return existing;
+    }
+
+    /**
+     * Helper to clean up existing search indexes on the collection. Used in setup to ensure a clean state. In production, you might want a more sophisticated migration strategy instead of dropping indexes.
+     * @param {import('mongodb').Collection} collection
+     */
+    async cleanSearchIndexes(collection) {
+        const indexes = await this.listSearchIndexes(collection);
+        for (const index of indexes) {
+            await collection.dropSearchIndex(index.name);
+            logger.info(COMPONENT, 'Search index deleted', { index: index.name });
+        }
     }
 }
