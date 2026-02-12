@@ -103,10 +103,50 @@ curl -X POST http://localhost:3000/api/rag/ask \
 **Using PowerShell:**
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask?call=true" `
   -ContentType "application/json" `
   -Body '{"question": "What is the title of the movie in which a soldier is forced to become a warrior fighting for his life?"}'
 ```
+
+Response
+```json
+{
+    "answer": "The title of the movie is \"Gladiator.\" In this film, a former Roman general named Maximus learns to fight as a gladiator in order to seek revenge for his family and expose the corrupt emperor responsible for their deaths. The story focuses on themes of honor, betrayal, love, and redemption set against the backdrop of ancient Rome'CTEXT = \"Gladiator\";",
+    "contextChunks": [
+        {
+            "title": "Gladiator",
+            "description": "Gladiator. A former Roman general is betrayed and reduced to slavery. He rises through the ranks of the gladiator arena to avenge the murder of his family and the corrupt emperor who ordered it.",
+            "coverImage": "img/poster-016.jpg",
+            "score": 0.7211229205131531
+        },
+        {
+            "title": "Saving Private Ryan",
+            "description": "Saving Private Ryan. Following the Normandy landings, a group of U.S. soldiers go behind enemy lines to retrieve a paratrooper whose brothers have been killed in action. A brutal and realistic war drama.",
+            "coverImage": "img/poster-013.jpg",
+            "score": 0.7174144983291626
+        },
+        {
+            "title": "The Matrix",
+            "description": "The Matrix. A computer hacker learns from rebels about the true nature of reality and his role in the war against the machines that have enslaved humanity in a simulated reality.",
+            "coverImage": "img/poster-007.jpg",
+            "score": 0.6721935868263245
+        },
+        {
+            "title": "Fight Club",
+            "description": "Fight Club. An insomniac office worker and a devil-may-care soap maker form an underground fight club that evolves into something much more. A critique of consumerism and masculinity.",
+            "coverImage": "img/poster-010.jpg",
+            "score": 0.6635963916778564
+        },
+        {
+            "title": "Alien",
+            "description": "Alien. The crew of a commercial spacecraft encounter a deadly life form after investigating an unknown transmission. A claustrophobic science-fiction horror about survival against a perfect predator.",
+            "coverImage": "img/poster-021.jpg",
+            "score": 0.650110125541687
+        }
+    ]
+}
+```
+
 
 **Example response:**
 

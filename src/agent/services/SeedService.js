@@ -28,9 +28,9 @@ export class SeedService {
                 return;
             }
             logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
-            const texts = documents.map((d) => d.text);
+
             const [textEmbeddings, imageEmbeddings] = await Promise.all([
-                this.srvVoyage.getEmbedding(texts),
+                this.srvVoyage.getEmbedding(documents.map((d) => d.text)),
                 null
             ]);
 

@@ -4,6 +4,10 @@ const COMPONENT = 'rag';
 
 export class RagService {
 
+    /**
+     * Constructor for RagService.
+     * @param {{ db: import('mongodb').Db, collectionName: string, srvVoyage: any, srvLLM: any, vectorIndexName?: string }} options - MongoDB database and collection name for RAG data; VoyageAI service instance for embeddings; LLM service instance for question answering; optional vector index name prefix (default 'rag_vector')
+     */
     constructor(options) {
         this.collection = options?.db.collection(options.collectionName);
         this.srvVoyage = options?.srvVoyage;
@@ -11,6 +15,11 @@ export class RagService {
         this.indexName = options?.vectorIndexName ?? 'rag_vector';
     }
 
+    /**
+     * Vector search to retrieve relevant chunks based on embedding. Uses $vectorSearch aggregation stage.
+     * @param {{ embedding: number[], k?: number, path?: string, type?: string }} options - embedding vector; k: number of chunks to retrieve; path: embedding field path (default 'embedding'); type: which embedding to use (e.g. 'text' or 'image'; default 'text')
+     * @returns {Promise<{ title: string, description: string, coverImage: string, score: number }[]>}
+     */
     async retrieveRelevantChunks(options) {
         const { embedding, k = 5, path = 'embedding', type = 'text' } = options || {};
         const indexName = `${this.indexName}_${type}_index`;
@@ -39,6 +48,12 @@ export class RagService {
         return docs;
     }
 
+    /**
+     * Main RAG method: embed question, vector search to retrieve relevant chunks, call LLM with question+chunks, return answer+chunks.
+     * @param {string} question 
+     * @param {{ k?: number, path?: string, type?: string }} options - k: number of chunks to retrieve; path: embedding field path (default 'embedding'); type: which embedding to use (e.g. 'text' or 'image'; default 'text')
+     * @returns {Promise<{ answer: string, contextChunks: { title: string, description: string, coverImage: string, score: number }[] }>} Answer and metadata of retrieved chunks
+     */
     async ask(question, options) {
         const { k = 5, path = 'embedding', type = 'text' } = options || {};
 
