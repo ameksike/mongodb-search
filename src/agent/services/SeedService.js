@@ -19,26 +19,41 @@ export class SeedService {
 
     /**
      * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ sourceId: string, title: string, url: string, text: string }[]} documents
+     * @param {{ title: string, url: string, text: string, coverImage: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
      */
     async run(documents) {
-        if (documents.length === 0) {
-            logger.info(COMPONENT, 'No documents to ingest');
-            return;
+        try {
+            if (documents.length === 0) {
+                logger.info(COMPONENT, 'No documents to ingest');
+                return;
+            }
+            logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
+
+            const [textEmbeddings, imageEmbeddings] = await Promise.all([
+                this.srvVoyage.getEmbedding(documents.map((d) => d.text)),
+                null
+            ]);
+
+            logger.info(COMPONENT, 'Text Embeddings received', { count: textEmbeddings?.length ?? 0 });
+            logger.info(COMPONENT, 'Image Embeddings received', { count: imageEmbeddings?.length ?? 0 });
+
+            const docsToInsert = documents.map((doc, i) => {
+                return {
+                    title: doc.title,
+                    description: doc.text,
+                    coverImage: doc.coverImage ?? doc.url,
+                    embedding: {
+                        text: (textEmbeddings && textEmbeddings[i]) || [],
+                        image: (imageEmbeddings && imageEmbeddings[i]) || []
+                    },
+                };
+            });
+
+            const res = await this.collection.insertMany(docsToInsert);
+            logger.info(COMPONENT, 'Ingest complete', { documents: documents.length, insertedIds: Object.values(res.insertedIds) });
         }
-        logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
-        const texts = documents.map((d) => d.text);
-        const embeddings = await this.srvVoyage.getEmbedding(texts);
-        logger.info(COMPONENT, 'Embeddings received', { count: embeddings.length });
-
-        const docsToInsert = documents.map((doc, i) => ({
-            sourceId: doc.sourceId,
-            content: doc.text,
-            metadata: { title: doc.title, url: doc.url },
-            embedding: embeddings[i],
-        }));
-
-        await this.collection.insertMany(docsToInsert);
-        logger.info(COMPONENT, 'Ingest complete', { documents: documents.length, apiCalls: 1 });
+        catch (err) {
+            logger.error(COMPONENT, 'Ingest failed', { error: err.message }); throw err;
+        }
     }
 }

@@ -2,13 +2,13 @@ import 'dotenv/config';
 import { MongoClient } from 'mongodb';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 import { SeedService } from '../services/SeedService.js';
-import { seedDocuments } from '../data/seedDocuments.js';
+import { films as seedDocuments } from '../data/films.js';
 import { logger } from '../utils/logger.js';
 
 const {
     MONGODB_URI,
     MONGODB_DB = 'rag',
-    MONGODB_COLLECTION = 'chunks',
+    MONGODB_COLLECTION = 'films',
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,

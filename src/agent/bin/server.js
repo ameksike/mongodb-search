@@ -14,7 +14,8 @@ const {
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
-    OLLAMA_MODEL,
+    LLM_MODEL,
+    LLM_CALL,
     PORT = 3000,
 } = process.env;
 
@@ -29,7 +30,7 @@ try {
         throw new Error('Missing VoyageAI configuration');
     }
 
-    if (!OLLAMA_MODEL) {
+    if (!LLM_MODEL) {
         throw new Error('Missing Ollama model configuration');
     }
 
@@ -46,7 +47,8 @@ try {
             model: VOYAGE_MODEL,
         }),
         srvLLM: new OllamaService({
-            model: OLLAMA_MODEL,
+            model: LLM_MODEL,
+            call: LLM_CALL === 'true',
         })
     });
 

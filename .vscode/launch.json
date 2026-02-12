@@ -8,11 +8,11 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Current File",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\src\\lanchain\\index.js"
+            "program": "${file}"
         }
     ]
 }
