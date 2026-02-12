@@ -112,6 +112,9 @@ export class SetupService {
         if (this.indexType === 'image' || this.indexType === 'both') {
             await this.createImageIndex(collection, existingIndexes);
         }
+
+        const indexes = await this.listSearchIndexes(collection);
+        logger.info(COMPONENT, 'Vector Search Indexes ensured', { indexes: JSON.stringify(indexes, null, 2) });
     }
 
     /**
@@ -244,7 +247,7 @@ export class SetupService {
             logger.warn(COMPONENT, 'Could not list search indexes', { reason: err.message });
             return;
         }
-        logger.info(COMPONENT, 'Existing Indexes', { indexes: existing });
+        logger.info(COMPONENT, 'Existing Indexes', { indexes: JSON.stringify(existing, null, 2) });
         return existing;
     }
 
