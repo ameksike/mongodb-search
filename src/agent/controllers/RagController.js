@@ -27,6 +27,10 @@ export class RagController {
                     .json({ error: 'Missing or invalid "question" field' });
             }
 
+            req.query.call && (this.ragService.srvLLM.call = req.query.call === 'true');
+
+            this.ragService.srvLLM.call
+
             logger.info(COMPONENT, 'Ask received', { questionLength: question.length });
             const result = await this.ragService.ask(question);
             logger.info(COMPONENT, 'Ask completed', { contextChunks: result.contextChunks?.length ?? 0 });

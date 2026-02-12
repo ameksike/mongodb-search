@@ -97,7 +97,7 @@ Send a question to the RAG endpoint. The server embeds the question, runs vector
 ```bash
 curl -X POST http://localhost:3000/api/rag/ask \
   -H "Content-Type: application/json" \
-  -d "{\"question\": \"What is the product manual about?\"}"
+  -d "{"question": "What is the title of the movie in which a soldier is forced to become a warrior fighting for his life?"}"
 ```
 
 **Using PowerShell:**
@@ -105,7 +105,7 @@ curl -X POST http://localhost:3000/api/rag/ask \
 ```powershell
 Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
   -ContentType "application/json" `
-  -Body '{"question": "What is the product manual about?"}'
+  -Body '{"question": "What is the title of the movie in which a soldier is forced to become a warrior fighting for his life?"}'
 ```
 
 **Example response:**
@@ -116,7 +116,10 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
   "contextChunks": [
     {
       "content": "Chunk text...",
-      "metadata": { "title": "Product Manual", "url": "https://example.com/manual" },
+      "metadata": {
+        "title": "Product Manual",
+        "url": "https://example.com/manual"
+      },
       "score": 0.89
     }
   ]
@@ -126,10 +129,10 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
 **Using JavaScript (fetch):**
 
 ```js
-const res = await fetch('http://localhost:3000/api/rag/ask', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ question: 'What is the product manual about?' }),
+const res = await fetch("http://localhost:3000/api/rag/ask", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ question: "What is the product manual about?" }),
 });
 const data = await res.json();
 console.log(data.answer);
@@ -140,9 +143,9 @@ console.log(data.contextChunks);
 
 ## API Summary
 
-| Method | Path             | Description                    |
-|--------|------------------|--------------------------------|
-| GET    | `/api/health`    | Health check                   |
-| POST   | `/api/rag/ask`   | RAG Q&A; body: `{ "question": "..." }` |
+| Method | Path           | Description                            |
+| ------ | -------------- | -------------------------------------- |
+| GET    | `/api/health`  | Health check                           |
+| POST   | `/api/rag/ask` | RAG Q&A; body: `{ "question": "..." }` |
 
 All project and agent conventions are kept in `tmp/context.md`.

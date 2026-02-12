@@ -1,4 +1,3 @@
-import { log } from 'console';
 import { logger } from '../utils/logger.js';
 
 const COMPONENT = 'setup';
@@ -40,24 +39,24 @@ export class SetupService {
     schemaValidator() {
         return {
             bsonType: 'object',
-            required: ['title', 'description', 'coverImage', 'embedding'],
+            required: ['title', 'description'],
             properties: {
                 title: { bsonType: 'string' },
                 description: { bsonType: 'string' },
                 coverImage: { bsonType: 'string' },
                 embedding: {
                     bsonType: 'object',
-                    required: ['text', 'image'],
+                    // required: ['text', 'image'],
                     properties: {
                         text: {
                             bsonType: 'array',
-                            minItems: this.dimensionsText,
+                            minItems: 0,
                             maxItems: this.dimensionsText,
                             items: { bsonType: 'double' },
                         },
                         image: {
                             bsonType: 'array',
-                            minItems: this.dimensionsImage,
+                            minItems: 0,
                             maxItems: this.dimensionsImage,
                             items: { bsonType: 'double' },
                         },
