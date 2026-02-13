@@ -10,7 +10,10 @@
     "agent:ingest": "node src/agent/bin/ingest.js",
     "agent:seed": "node src/agent/bin/ingest.js",
     "agent:setup": "node src/agent/bin/setup.js",
-    "agent:download": "node src/agent/bin/download.js"
+    "agent:download": "node src/agent/bin/download.js",
+    "search:fulltext": "node src/search/fulltext.js",
+    "search:vector": "node src/search/vector.js",
+    "search:hybrid": "node src/search/hybrid.js"
   },
   "repository": {
     "type": "git",
