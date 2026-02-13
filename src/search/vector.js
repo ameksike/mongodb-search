@@ -1,7 +1,6 @@
 /**
  * Minimal vector search demo. Uses VoyageAIService to embed the query, then Atlas Vector Search $vectorSearch.
- * Config: .env → MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION, VECTOR_INDEX_NAME, VECTOR_INDEX_PATH,
- *         VOYAGE_API_URL, VOYAGE_API_KEY, VOYAGE_MODEL, SEARCH_QUERY
+ * Config: .env → MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION, VECTOR_INDEX_NAME, VECTOR_INDEX_PATH, VOYAGE_API_URL, VOYAGE_API_KEY, VOYAGE_MODEL, SEARCH_QUERY
  */
 import 'dotenv/config';
 import { MongoClient } from 'mongodb';
