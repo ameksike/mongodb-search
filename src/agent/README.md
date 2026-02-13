@@ -119,7 +119,7 @@ Expected: `{"status":"ok"}`
 
 ```json
 {
-  "question": "What is the movie about a Roman general who becomes a gladiator?"
+  "question": "What is the movie about a general who is forced to become a warrior fighting for his life"
 }
 ```
 
