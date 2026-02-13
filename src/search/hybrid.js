@@ -22,7 +22,7 @@ const {
 // Validate required config
 if (!MONGODB_URI) throw new Error('Missing MONGODB_URI');
 
-// define dimensions and query vector before connecting to MongoDB since they don't depend on the connection
+// Define dimensions and query vector before connecting (they do not depend on the connection)
 const dimensions = Number(VECTOR_DIMENSIONS);
 
 // Create zero vector query (replace with real embedding vector for actual use)
@@ -81,5 +81,5 @@ console.log(JSON.stringify({
     results: merged
 }, null, 2));
 
-// close connection
+// Close connection
 await client.close();

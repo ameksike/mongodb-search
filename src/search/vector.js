@@ -1,7 +1,7 @@
 /**
  * Minimal vector search demo. Uses Atlas Vector Search $vectorSearch stage.
  * Config: .env → MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION, VECTOR_INDEX_NAME, VECTOR_INDEX_PATH, VECTOR_DIMENSIONS
- * Uses a zero vector as query for demo (replace with real embedding for real similarity).
+ * Uses a zero vector as the query for demo (replace with a real embedding for actual similarity search).
  */
 import 'dotenv/config';
 import { MongoClient } from 'mongodb';
@@ -54,5 +54,5 @@ console.log(JSON.stringify({
     results: docs
 }, null, 2));
 
-// close connection
+// Close connection
 await client.close();

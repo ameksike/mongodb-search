@@ -51,5 +51,5 @@ console.log(JSON.stringify({
     results: docs
 }, null, 2));
 
-// close connection
+// Close connection
 await client.close();
