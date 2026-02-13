@@ -57,6 +57,9 @@ await collection.createSearchIndex({
 
 ## **Approach 2: Separate Indexes for Each Field**
 
+![](./img/search.indexes.jpg)
+![](./img/search.vector.indexes.jpg)
+
 ### Example:
 
 1. **Index for Text Embeddings**:
