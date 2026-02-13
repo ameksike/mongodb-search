@@ -82,12 +82,17 @@ You get **small demos** per search type and a **full RAG agent** that uses them 
 
 | Script | Description |
 |--------|-------------|
+| **Agentic Demo** | |
 | `npm run agent:setup` | Create collection and vector search indexes. |
 | `npm run agent:download` | Download placeholder cover images for seed data. |
 | `npm run agent:seed` / `npm run agent:ingest` | Seed collection from [src/agent/data/films.js](src/agent/data/films.js). |
 | `npm run agent:start` | Start the RAG API server. |
+| **Search Types Demos** | |
+| `npm run search:fulltext` | Run full-text search demo ([fulltext.js](src/search/fulltext.js)). |
+| `npm run search:vector` | Run vector search demo ([vector.js](src/search/vector.js)). |
+| `npm run search:hybrid` | Run hybrid (full-text + vector) search demo ([hybrid.js](src/search/hybrid.js)). |
 
-Run all from the **project root**.
+Run all from the **project root**. Search demos read config from `.env` (see comments in each file).
 
 ---
 
