@@ -27,7 +27,10 @@ This repository explores **different search capabilities on MongoDB** and **appl
 
 ### ⚡ Quick Links
 
-- [▶️ Quick Start](#-quick-start) · [📜 Scripts](#-scripts-packagejson) · [🔗 References](#-references) · [📄 License](#-license)
+- [▶️ Quick Start](#-quick-start)
+- [📜 Scripts](#-scripts-packagejson)
+- [🔗 References](#-references)
+- [📄 License](#-license)
 
 ---
 
