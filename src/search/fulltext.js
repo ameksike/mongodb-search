@@ -53,20 +53,27 @@ if (!searchIndexes.some(index => index.name === SEARCH_INDEX_NAME)) {
 }
 
 // Basic text search using a standard text index (not Atlas Search) for comparison
-console.log("Basic text search:", await coll.find({ title: "The Shawshank Redemption" }).toArray());
+console.log("Basic text search:", await coll.find(
+    { title: "The Shawshank Redemption" },
+    { projection: { _id: 0, title: 1, description: 1 } }
+).toArray());
 
 // Basic text search with filters (e.g., movies released from 2000 or later in Action or Adventure genres)
-console.log("Basic text search with filters:", await coll.find({
-    title: { $in: ["The Shawshank Redemption", "The Dark Knight"] }, // Matches documents where genres contain Action or Adventure
-}).toArray());
+console.log("Basic text search with filters:", await coll.find(
+    { title: { $in: ["The Shawshank Redemption", "The Dark Knight"] } },
+    { projection: { _id: 0, title: 1, description: 1 } }
+).toArray());
 
 // Basic text search with regex filter (e.g., titles starting with "Good", case-insensitive)
-console.log("Basic text search with regex filter:", await coll.find({
-    title: {
-        $regex: "^Good",
-        $options: "i"
+console.log("Basic text search with regex filter:", await coll.find(
+    {
+        title: {
+            $regex: "^Good",
+            $options: "i"
+        },
     },
-}).toArray());
+    { projection: { _id: 0, title: 1, description: 1 } }
+).toArray());
 
 // Text Search: Matches documents containing the word "Good" or related tokens in specified fields
 console.log("Text Search Results:", await coll.aggregate([
