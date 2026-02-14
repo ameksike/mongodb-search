@@ -36,6 +36,33 @@ await client.connect();
 // Get the collection 
 const coll = client.db(MONGODB_DB).collection(MONGODB_COLLECTION);
 
+// List existing search indexes for the collection
+const searchIndexes = await coll.listSearchIndexes().toArray();
+console.log("Existing Search Indexes:", JSON.stringify(searchIndexes.map(index => ({
+    name: index.name,
+    type: index.type,
+    fields: index.latestDefinition?.mappings?.fields || index.latestDefinition?.fields || "dynamic"
+})), null, 2));
+
+// Create a vector search index if it doesn't exist
+if (!searchIndexes.some(index => index.name === VECTOR_INDEX_NAME)) {
+    const result = await coll.createSearchIndex({
+        name: VECTOR_INDEX_NAME,
+        type: "vectorSearch",
+        definition: {
+            "fields": [
+                {
+                    "type": "vector",
+                    "numDimensions": 1024,
+                    "path": VECTOR_INDEX_PATH,
+                    "similarity": "dotProduct"
+                }
+            ]
+        }
+    });
+    console.log(`Created vector search index: ${VECTOR_INDEX_NAME}`, result);
+}
+
 // Run the aggregation pipeline with $vectorSearch, projecting the title, description, and vector search score. Adjust numCandidates and limit as needed. 
 const docs = await coll.aggregate([
     {
