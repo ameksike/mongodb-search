@@ -100,8 +100,8 @@ const docs = await coll.aggregate([
                             "$search": {
                                 "index": SEARCH_INDEX_NAME,
                                 "phrase": {
-                                    "query": "star wars",
-                                    "path": "title"
+                                    "query": "Empire Strikes Back",
+                                    "path": "description"
                                 }
                             }
                         },
@@ -143,3 +143,8 @@ console.log(JSON.stringify({
 
 // Clean up and close the MongoDB connection when done.
 await client.close();
+
+/**
+ * Error: MongoServerError $rankFusion is not allowed or the syntax is incorrect, see the Atlas documentation for more information
+ * Why: MongoDB Cluster M0 (Free Tier) does not support $rankFusion. You need to be on an M10 or higher cluster to use this feature.
+ */
