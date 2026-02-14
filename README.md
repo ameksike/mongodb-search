@@ -103,6 +103,8 @@ Run all from the **project root**. Search demos read config from `.env` (see com
 - [What is MongoDB Search?](https://www.mongodb.com/docs/atlas/atlas-search/)
     - [Full-Text Search](https://www.mongodb.com/resources/basics/full-text-search)
     - [Hybrid Search](https://www.mongodb.com/docs/atlas/atlas-search/tutorial/hybrid-search/)
+        - [Hybrid Search Explained](https://www.mongodb.com/resources/products/capabilities/hybrid-search)
+        - [Perform Hybrid Search with MongoDB Vector Search and MongoDB Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/hybrid-search/vector-search-with-full-text-search/?interface=driver&language=nodejs&pipeline-stage=rank-fusion)
     - [Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-overview/)
         - [Supercharge Self-Managed Apps With Search and Vector Search Capabilities](https://www.mongodb.com/company/blog/product-release-announcements/supercharge-self-managed-apps-search-vector-search-capabilities)
         - [Atlas Hybrid Search Tester](https://hybrid.sa.prod.corp.mongodb.com/)

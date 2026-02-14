@@ -1,5 +1,5 @@
 /**
- * Minimal vector search demo. Uses VoyageAIService to embed the query, then Atlas Vector Search $vectorSearch.
+ * Minimal hybrid search demo. Uses VoyageAIService to embed the query, then Atlas Vector Search $vectorSearch.
  * Config: .env → MONGODB_URI, MONGODB_DB, MONGODB_COLLECTION, VECTOR_INDEX_NAME, VECTOR_INDEX_PATH, VOYAGE_API_URL, VOYAGE_API_KEY, VOYAGE_MODEL, SEARCH_QUERY
  */
 import 'dotenv/config';
@@ -11,12 +11,13 @@ const {
     MONGODB_URI,
     MONGODB_DB = 'rag',
     MONGODB_COLLECTION = 'films',
+    SEARCH_INDEX_NAME = 'title_description_index',
     VECTOR_INDEX_NAME = 'rag_vector_text_index',
     VECTOR_INDEX_PATH = 'embedding.text',
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
-    SEARCH_QUERY = 'a hero fighting in ancient Rome',
+    SEARCH_QUERY = 'Which movies involve a battle between opposing forces or factions?',
 } = process.env;
 
 // Basic config validation. In a real app, you'd want more robust validation and error handling.
@@ -36,49 +37,100 @@ await client.connect();
 // Get the collection
 const coll = client.db(MONGODB_DB).collection(MONGODB_COLLECTION);
 
+// List existing search indexes for the collection
+const searchIndexes = await coll.listSearchIndexes().toArray();
+console.log("Existing Search Indexes:", JSON.stringify(searchIndexes.map(index => ({
+    name: index.name,
+    type: index.type,
+    fields: index.latestDefinition?.mappings?.fields || index.latestDefinition?.fields || "dynamic"
+})), null, 2));
+
+// Create a text search index if it doesn't exist
+if (!searchIndexes.some(index => index.name === SEARCH_INDEX_NAME)) {
+    const result = await coll.createSearchIndex({
+        name: SEARCH_INDEX_NAME,
+        type: "search",
+        definition: {
+            "mappings": {
+                "dynamic": true
+            }
+        }
+    });
+    console.log(`Created text search index: ${SEARCH_INDEX_NAME}`, result);
+}
+
+// Create a vector search index if it doesn't exist
+if (!searchIndexes.some(index => index.name === VECTOR_INDEX_NAME)) {
+    const result = await coll.createSearchIndex({
+        name: VECTOR_INDEX_NAME,
+        type: "vectorSearch",
+        definition: {
+            "fields": [
+                {
+                    "type": "vector",
+                    "numDimensions": 1024,
+                    "path": VECTOR_INDEX_PATH,
+                    "similarity": "dotProduct"
+                }
+            ]
+        }
+    });
+    console.log(`Created vector search index: ${VECTOR_INDEX_NAME}`, result);
+}
+
 // Run the aggregation pipeline with $vectorSearch, projecting the title, description, and vector search score. Adjust numCandidates and limit as needed. 
 const docs = await coll.aggregate([
     {
-        $search: {
-            index: VECTOR_INDEX_NAME,
-            compound: {
-                must: [
-                    {
-                        knnBeta: {
-                            path: VECTOR_INDEX_PATH,
-                            queryVector,
-                            k: 50,  // top K by vector similarity
+        $rankFusion: {
+            input: {
+                pipelines: {
+                    vectorPipeline: [
+                        {
+                            "$vectorSearch": {
+                                "index": VECTOR_INDEX_NAME,
+                                "path": VECTOR_INDEX_PATH,
+                                "queryVector": queryVector,
+                                "numCandidates": 100,
+                                "limit": 20
+                            }
+                        }
+                    ],
+                    fullTextPipeline: [
+                        {
+                            "$search": {
+                                "index": SEARCH_INDEX_NAME,
+                                "phrase": {
+                                    "query": "star wars",
+                                    "path": "title"
+                                }
+                            }
                         },
-                    },
-                ],
-                should: [
-                    {
-                        text: {
-                            query: SEARCH_QUERY,
-                            path: ['title', 'text'],
-                            // Slightly boost lexical match so exact terms matter
-                            score: { boost: { value: 3 } },
-                        },
-                    },
-                ],
-                // Optional: structured filters (example)
-                // filter: [
-                //   { range: { path: 'year', gte: 1990 } },
-                // ],
+                        { "$limit": 20 }
+                    ]
+                }
             },
-        },
+            combination: {
+                weights: {
+                    vectorPipeline: 0.5,
+                    fullTextPipeline: 0.5
+                }
+            },
+            "scoreDetails": true
+        }
     },
-    { $limit: 10 },
     {
-        $project: {
+        "$project": {
             _id: 0,
             title: 1,
-            text: 1,
+            description: 1,
             url: 1,
             coverImage: 1,
-            score: { $meta: 'searchScore' },
-        },
-    }
+            scoreDetails: { "$meta": "scoreDetails" }
+        }
+    },
+    {
+        "$limit": 10
+    },
 ]).toArray();
 
 // Output the search results. In a real app, you'd likely want to format this better or return it from an API endpoint.
