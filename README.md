@@ -112,7 +112,7 @@ Run all from the **project root**. Search demos read config from `.env` (see com
         - [How to Index Fields for Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-type/?deployment-type=atlas&embedding=byo&interface=driver&language=python#how-to-index-fields-for-vector-search)
         - [Manage MongoDB Search Indexes](https://www.mongodb.com/docs/atlas/atlas-search/manage-indexes/?deployment-type=atlas&interface=driver&language=python)
 
-### AI / RAG / Agents
+### Tools
 - LangChain
     - [LangChain Quickstart](https://docs.langchain.com/oss/javascript/langchain/quickstart)
     - [LangChain Chat](https://chat.langchain.com/)
@@ -120,7 +120,10 @@ Run all from the **project root**. Search demos read config from `.env` (see com
 - VoyageAI
     - [VoyageAI Embeddings](https://docs.voyageai.com/docs/embeddings)
     - [Manage Projects](https://dashboard.voyageai.com/organization/projects)
-- [Agentic Yield Analytics with MongoDB](https://www.mongodb.com/docs/atlas/architecture/current/solutions-library/agentic-yield-analytics/)
+    - [Agentic Yield Analytics with MongoDB](https://www.mongodb.com/docs/atlas/architecture/current/solutions-library/agentic-yield-analytics/)
+- MinIO
+    - [How to Run MinIO in Docker (S3-Compatible Object Storage)](https://oneuptime.com/blog/post/2026-02-08-how-to-run-minio-in-docker-s3-compatible-object-storage/view)
+    - [MinIO Docker: Setup Guide for S3-Compatible Object Storage](https://www.datacamp.com/tutorial/minio-docker)
 ---
 
 ## 📄 License

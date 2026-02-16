@@ -14,3 +14,15 @@ services:
         ollama pull phi3:mini &&
         wait
       "
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"  # API S3-compatible
+      - "9001:9001"  # Consola web
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin12345
+    volumes:
+      - ./tmp/minio:/data
+    command: server /data --console-address ":9001"
