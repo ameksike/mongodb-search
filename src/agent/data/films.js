@@ -27,3 +27,9 @@ export const films = [
     { title: 'Alien', url: 'https://example.com/movies/021', coverImage: 'img/poster-021.jpg', text: 'Alien. The crew of a commercial spacecraft encounter a deadly life form after investigating an unknown transmission. A claustrophobic science-fiction horror about survival against a perfect predator.' },
     { title: 'Spirited Away', url: 'https://example.com/movies/022', coverImage: 'img/poster-022.jpg', text: 'Spirited Away. A young girl wanders into a world of spirits and must work in a bathhouse for supernatural beings to free herself and her parents. A Studio Ghibli fantasy about identity and courage.' },
 ];
+
+export const filmsExtra = [
+    { "title": "Echoes of Tomorrow", "url": "https://example.com/movies/001", "coverImage": "img/poster-001.jpg", "description": "In a near-future dystopia, a young scientist discovers a way to connect with alternate timelines. As she explores possibilities of a better world, she is faced with dangerous consequences that threaten her own existence and the fate of humanity. A thrilling mix of science fiction and drama that questions the boundaries of reality and destiny." },
+]
+
+export default films;

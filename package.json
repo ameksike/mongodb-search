@@ -9,6 +9,7 @@
     "agent:start": "node src/agent/bin/server.js",
     "agent:ingest": "node src/agent/bin/ingest.js",
     "agent:seed": "node src/agent/bin/ingest.js",
+    "agent:watch": "npx kozen --action=trigger:start",
     "agent:setup": "node src/agent/bin/setup.js",
     "agent:download": "node src/agent/bin/download.js",
     "search:fulltext": "node src/search/fulltext.js",
@@ -27,6 +28,7 @@
   },
   "homepage": "https://github.com/ameksike/mongodb-search#readme",
   "dependencies": {
+    "@kozen/trigger": "^1.0.6",
     "@langchain/core": "^1.1.19",
     "@langchain/ollama": "^1.2.2",
     "dotenv": "^17.2.4",
