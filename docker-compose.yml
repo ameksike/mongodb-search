@@ -14,15 +14,19 @@ services:
         ollama pull phi3:mini &&
         wait
       "
+  # MinIO: S3-compatible object storage (e.g. for film cover images).
+  # App connects via S3_ENDPOINT=http://localhost:9000, STORE_BUCKET=films,
+  # AWS_ACCESS_KEY_ID=admin, AWS_SECRET_ACCESS_KEY=admin12345.
   minio:
-    image: quay.io/minio/minio
+    image: quay.io/minio/minio:latest
     container_name: minio
     ports:
-      - "9000:9000"  # API S3-compatible
-      - "9001:9001"  # Consola web
+      - "9000:9000"   # S3-compatible API
+      - "9001:9001"   # Web console
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin12345
     volumes:
       - ./tmp/minio:/data
     command: server /data --console-address ":9001"
+    restart: unless-stopped

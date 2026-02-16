@@ -3,16 +3,19 @@ import multer from 'multer';
 import { FilmService } from '../services/FilmService.js';
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'film';
+const COMPONENT = 'controller:film';
 
 /** Max cover image size (5MB). */
-const COVER_IMAGE_LIMIT = 5 * 1024 * 1024;
+const COVER_IMAGE_LIMIT = process.env.STORE_IMAGE_LIMIT ? parseInt(process.env.STORE_IMAGE_LIMIT, 10) : 5 * 1024 * 1024;
 
-/** Multer memory storage for multipart; single file field "coverImage". */
+/** Multer: accept one file from either "coverImage" or "image" to avoid LIMIT_UNEXPECTED_FILE when client uses a different field name. */
 const uploadCover = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: COVER_IMAGE_LIMIT },
-}).single('coverImage');
+}).fields([
+    { name: 'coverImage', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+]);
 
 /**
  * Run multer only when request is multipart/form-data so JSON body is left to express.json().
@@ -24,36 +27,12 @@ function multipart(req, res, next) {
     if (req.is('multipart/form-data')) {
         uploadCover(req, res, (err) => {
             if (err) {
-                logger.warn(COMPONENT, 'Multipart parse failed', { error: err.message });
+                logger.warn(COMPONENT, 'Multipart parse failed', { error: err.message, code: err.code });
                 return res.status(400).json({ error: err.message });
             }
             next();
         });
     } else next();
-}
-
-/**
- * Normalize payload from req (JSON or form-data). Form-data fields are strings; year is parsed.
- * @param {express.Request} req
- * @returns {{ title?: string, description?: string, coverImage?: string, year?: number, genre?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string }}
- */
-function normalizeFilmBody(req) {
-    const body = req.body ?? {};
-    const title = body.title != null ? String(body.title).trim() : undefined;
-    const description = body.description != null ? String(body.description).trim() : undefined;
-    let coverImage = body.coverImage != null ? String(body.coverImage).trim() : undefined;
-    let year = body.year;
-    if (typeof year === 'string') year = parseInt(year, 10);
-    if (typeof year !== 'number' || !Number.isInteger(year)) year = undefined;
-    const genre = body.genre != null ? String(body.genre).trim() : undefined;
-
-    const payload = { title, description, coverImage, year, genre };
-    if (req.file && Buffer.isBuffer(req.file.buffer)) {
-        payload.coverImageBuffer = req.file.buffer;
-        payload.coverImageMimetype = req.file.mimetype ?? 'application/octet-stream';
-        payload.coverImageOriginalname = req.file.originalname ?? '';
-    }
-    return payload;
 }
 
 export class FilmController {
@@ -77,7 +56,7 @@ export class FilmController {
 
     async create(req, res) {
         try {
-            const payload = normalizeFilmBody(req);
+            const payload = this.normalizeBody(req);
             const title = payload.title;
             if (!title || title === '') {
                 logger.warn(COMPONENT, 'Create rejected', { reason: 'Missing or invalid title' });
@@ -143,7 +122,7 @@ export class FilmController {
     async update(req, res) {
         try {
             const { id } = req.params;
-            const payload = normalizeFilmBody(req);
+            const payload = this.normalizeBody(req);
             const updates = {};
             if (payload.title !== undefined) {
                 if (typeof payload.title !== 'string' || payload.title === '') {
@@ -196,5 +175,30 @@ export class FilmController {
                 details: process.env.NODE_ENV === 'development' && err ? err.message : undefined,
             });
         }
+    }
+
+    /**
+     * Normalize payload from req (JSON or form-data). Form-data fields are strings; year is parsed.
+     * @param {express.Request} req
+     * @returns {{ title?: string, description?: string, coverImage?: string, year?: number, genre?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string }}
+     */
+    normalizeBody(req) {
+        const body = req.body ?? {};
+        const title = body.title != null ? String(body.title).trim() : undefined;
+        const description = body.description != null ? String(body.description).trim() : undefined;
+        let coverImage = body.coverImage != null ? String(body.coverImage).trim() : undefined;
+        let year = body.year;
+        if (typeof year === 'string') year = parseInt(year, 10);
+        if (typeof year !== 'number' || !Number.isInteger(year)) year = undefined;
+        const genre = body.genre != null ? String(body.genre).trim() : undefined;
+
+        const payload = { title, description, coverImage, year, genre };
+        const file = req.files?.coverImage?.[0] ?? req.files?.image?.[0];
+        if (file && Buffer.isBuffer(file.buffer)) {
+            payload.coverImageBuffer = file.buffer;
+            payload.coverImageMimetype = file.mimetype ?? 'application/octet-stream';
+            payload.coverImageOriginalname = file.originalname ?? '';
+        }
+        return payload;
     }
 }

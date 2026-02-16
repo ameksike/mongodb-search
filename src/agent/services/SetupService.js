@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'setup';
+const COMPONENT = 'service:setup';
 
 /**
  * Service responsible for ensuring the RAG collection and vector search index exist.

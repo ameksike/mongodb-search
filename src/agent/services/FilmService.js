@@ -1,23 +1,25 @@
 import { ObjectId } from 'mongodb';
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'film';
+const COMPONENT = 'service:film';
 
 /**
  * Service for films CRUD. Uses the same collection as RAG; creates/updates compute text embedding via VoyageAI.
- * When coverImageBuffer is provided, uploads to S3 (via S3Service) and stores the returned URL in coverImage.
+ * When coverImageBuffer is provided, uploads to S3 (via StoreService) and stores the returned URL in coverImage.
  */
 export class FilmService {
 
     /**
-     * @param {import('mongodb').Collection} collection - MongoDB collection (same as RAG)
-     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [srvVoyage] - Optional; for create/update to embed description
-     * @param {InstanceType<import('./S3Service.js').S3Service>} [srvS3] - Optional; for uploading cover image buffer to S3
+     * @param {Object} options - configuration options
+     * @param {import('mongodb').Collection} options.collection - MongoDB collection (same as RAG)
+     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [options.srvVoyage] - Optional; for create/update to embed description
+     * @param {InstanceType<import('./StoreService.js').StoreService>} [options.srvStore] - Optional; for uploading cover image buffer to S3
      */
-    constructor(collection, srvVoyage, srvS3) {
+    constructor(options) {
+        const { collection, srvVoyage, srvStore } = options || {};
         this.collection = collection;
         this.srvVoyage = srvVoyage;
-        this.srvS3 = srvS3;
+        this.srvStore = srvStore;
     }
 
     /** Projection for film responses (no embedding). */
@@ -31,8 +33,8 @@ export class FilmService {
      * @returns {Promise<string>}
      */
     async resolveCoverImage(film) {
-        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvS3) {
-            return this.srvS3.upload(film.coverImageBuffer, {
+        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvStore) {
+            return this.srvStore.upload(film.coverImageBuffer, {
                 contentType: film.coverImageMimetype ?? 'application/octet-stream',
                 filename: film.coverImageOriginalname,
             });
@@ -156,7 +158,7 @@ export class FilmService {
         if (film.title !== undefined) updateFields.title = film.title;
         if (film.description !== undefined) updateFields.description = film.description;
         if (film.coverImage !== undefined) updateFields.coverImage = film.coverImage;
-        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvS3) {
+        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvStore) {
             updateFields.coverImage = await this.resolveCoverImage(film);
         }
         if (film.year !== undefined) updateFields.year = film.year;

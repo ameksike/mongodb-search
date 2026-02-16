@@ -55,13 +55,20 @@ KOZEN_TRIGGER_DATABASE=rag
 KOZEN_TRIGGER_COLLECTION=films
 KOZEN_TRIGGER_URI=MONGODB_URI
 
-# AWS S3 (optional – for film cover image uploads via multipart/form-data)
-STORE_BUCKET=your-bucket-name
+# S3-compatible storage (optional – for film cover image uploads via multipart/form-data)
+# Use either AWS S3 or local MinIO (e.g. docker-compose minio service).
+STORE_BUCKET=films
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
-# Optional: custom public URL base (e.g. CloudFront)
+
+# For local MinIO (docker-compose): uncomment and use MinIO credentials
+# STORE_ENDPOINT=http://localhost:9000
+# AWS_ACCESS_KEY_ID=admin
+# AWS_SECRET_ACCESS_KEY=admin12345
+# Optional: custom public URL base (e.g. CloudFront or MinIO URL)
 # STORE_PUBLIC_BASE_URL=https://d123.cloudfront.net
+# STORE_PUBLIC_BASE_URL=http://localhost:9000/films
 ```
 
 For **setup** you can optionally set:

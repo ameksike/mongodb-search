@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'voyage';
+const COMPONENT = 'service:voyage';
 
 export class VoyageAIService {
 

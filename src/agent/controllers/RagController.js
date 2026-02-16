@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { RagService } from '../services/RagService.js';
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'rag';
+const COMPONENT = 'controller:rag';
 
 export class RagController {
     constructor(ragService) {

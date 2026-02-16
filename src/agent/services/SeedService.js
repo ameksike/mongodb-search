@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'seed';
+const COMPONENT = 'service:seed';
 
 /**
  * Service responsible for seeding the RAG collection: embed full document text via VoyageAI, insert into MongoDB.

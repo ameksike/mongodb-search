@@ -7,7 +7,7 @@ import { VoyageAIService } from '../services/VoyageAIService.js';
 import { RagController } from '../controllers/RagController.js';
 import { FilmController } from '../controllers/FilmController.js';
 import { FilmService } from '../services/FilmService.js';
-import { S3Service } from '../services/S3Service.js';
+import { StoreService } from '../services/StoreService.js';
 import { logger } from '../utils/logger.js';
 
 const {
@@ -19,9 +19,11 @@ const {
     VOYAGE_MODEL,
     LLM_MODEL,
     LLM_CALL,
-    STORE_BUCKET,
-    AWS_REGION,
     PORT = 3000,
+    AWS_REGION,
+    STORE_BUCKET = 'films',
+    STORE_ENDPOINT = 'http://127.0.0.1:9000',
+    STORE_DRIVER='MinIO',
 } = process.env;
 
 const COMPONENT = 'server';
@@ -43,7 +45,7 @@ try {
     await mongoClient.connect();
     logger.info(COMPONENT, 'MongoDB connected', { db: MONGODB_DB });
 
-    const voyage = new VoyageAIService({
+    const srvVoyage = new VoyageAIService({
         apiUrl: VOYAGE_API_URL,
         apiKey: VOYAGE_API_KEY,
         model: VOYAGE_MODEL,
@@ -54,16 +56,23 @@ try {
 
     const ragService = new RagService({
         db,
+        srvVoyage,
         collectionName: MONGODB_COLLECTION,
-        srvVoyage: voyage,
         srvLLM: new OllamaService({
             model: LLM_MODEL,
             call: LLM_CALL === 'true',
         }),
     });
 
-    const s3Service = STORE_BUCKET ? new S3Service({ bucket: STORE_BUCKET, region: AWS_REGION }) : null;
-    const filmService = new FilmService(collection, voyage, s3Service);
+    const srvStore = STORE_BUCKET
+        ? new StoreService({
+            bucket: STORE_BUCKET,
+            region: AWS_REGION,
+            endpoint: STORE_ENDPOINT,
+            driver: STORE_DRIVER,
+        })
+        : null;
+    const filmService = new FilmService({ collection, srvStore });
     const ragController = new RagController(ragService);
     const filmController = new FilmController(filmService);
 
