@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "agent:install": "npm run agent:download && npm run agent:setup && npm run agent:seed",
     "agent:start": "node src/agent/bin/server.js",
-    "agent:ingest": "node src/agent/bin/ingest.js",
     "agent:seed": "node src/agent/bin/ingest.js",
     "agent:watch": "npx kozen --action=trigger:start",
     "agent:setup": "node src/agent/bin/setup.js",
