@@ -1,18 +1,41 @@
+import 'dotenv/config';
+import { StoreService } from '../services/StoreService.js';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 
-// Load environment variables
 const {
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
+    VOYAGE_MULTIMODAL_MODEL,
+    STORE_BUCKET,
+    STORE_ENDPOINT,
+    AWS_REGION,
 } = process.env;
 
-// Initialize VoyageAIService outside of the insert function to reuse across calls
 const srvVoyage = new VoyageAIService({
     apiUrl: VOYAGE_API_URL,
     apiKey: VOYAGE_API_KEY,
     model: VOYAGE_MODEL,
+    multimodalModel: VOYAGE_MULTIMODAL_MODEL,
 });
+
+const storeService = STORE_BUCKET
+    ? new StoreService({
+        bucket: STORE_BUCKET,
+        region: AWS_REGION,
+        endpoint: STORE_ENDPOINT || process.env.S3_ENDPOINT,
+    })
+    : null;
+
+/** Infer MIME type from URL path (e.g. .jpg -> image/jpeg). */
+function mimeFromUrl(url) {
+    if (!url || typeof url !== 'string') return 'image/jpeg';
+    const lower = url.split('?')[0].toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+}
 
 /**
  * Trigger function to process new documents inserted into the MongoDB collection.
@@ -46,7 +69,41 @@ export async function insert(change, tools) {
             updatedDoc.embedding.text = textEmbedding;
         }
 
-        // check if the document has an image or text to embed, if not skip the update
+        // If document has coverImage and we have store + multimodal, load image from store and get image embedding
+        const coverImageUrl = change?.fullDocument?.coverImage;
+        if (coverImageUrl && storeService) {
+            const imageBuffer = await storeService.readFromUrl(coverImageUrl);
+            if (imageBuffer?.length) {
+                const mimeType = mimeFromUrl(coverImageUrl);
+                const imageEmbedding = await srvVoyage.getImageEmbedding(imageBuffer, mimeType);
+                if (!imageEmbedding?.length) {
+                    assistant?.logger?.warn({
+                        flow: tools.flow,
+                        message: "No image embedding generated for document",
+                        data: {
+                            database: dbName,
+                            collection: collectionName,
+                            documentKey: change.documentKey,
+                            coverImageUrl,
+                        },
+                    });
+                }
+                updatedDoc.embedding.image = imageEmbedding;
+            } else {
+                assistant?.logger?.warn({
+                    flow: tools.flow,
+                    message: "Failed to load image from store for embedding",
+                    data: {
+                        database: dbName,
+                        collection: collectionName,
+                        documentKey: change.documentKey,
+                        coverImageUrl,
+                    },
+                });
+            }
+        }
+
+        // Skip update if no embeddings were generated
         if (!updatedDoc.embedding.text?.length && !updatedDoc.embedding.image?.length) {
             assistant?.logger?.warn({
                 flow: tools.flow,

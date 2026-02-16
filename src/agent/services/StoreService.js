@@ -1,5 +1,6 @@
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { logger } from '../utils/logger.js';
+import { filterObject } from '../utils/utl.js';
 
 const COMPONENT = 'service:store';
 
@@ -39,6 +40,65 @@ export class StoreService {
 
         this.client = new S3Client(clientConfig);
         this._bucketEnsured = false;
+        if (this.endpoint) this.endpoint = this.endpoint.replace(/\/$/, '');
+
+        logger.info(COMPONENT, 'Initialized StoreService', filterObject(clientConfig, ['credentials'], { bucket: this.bucket }));
+    }
+
+    /**
+     * Read an object from the store by key. Returns the body as a Buffer.
+     * @param {string} key - Object key (e.g. "films/uuid/cover.jpg")
+     * @returns {Promise<Buffer>} Object body
+     */
+    async read(key) {
+        try {
+            if (!this.bucket) throw new Error('Store bucket not configured (STORE_BUCKET)');
+            const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+            const res = await this.client.send(command);
+            if (!res.Body) return Buffer.alloc(0);
+            const chunks = [];
+            for await (const chunk of res.Body) chunks.push(chunk);
+            const buffer = Buffer.concat(chunks);
+            logger.info(COMPONENT, 'Read complete', { key, size: buffer.length });
+            return buffer;
+        }
+        catch (err) {
+            logger.error(COMPONENT, 'Error reading object', { key, error: err.message, code: err.Code, statusCode: err.$metadata?.httpStatusCode });
+            throw err;
+        }
+    }
+
+    /**
+     * Derive the object key from a store URL (path-style or virtual-host). Returns null if the URL is not for this store.
+     * @param {string} url - Full URL (e.g. http://localhost:9000/films/uuid/cover.jpg)
+     * @returns {string | null} Object key or null
+     */
+    keyFromUrl(url) {
+        if (!url || typeof url !== 'string') return null;
+        try {
+            const u = new URL(url);
+            const pathSegments = u.pathname.replace(/^\//, '').split('/').filter(Boolean);
+            if (pathSegments[0] === this.bucket) return pathSegments.slice(1).join('/');
+            return pathSegments.length ? pathSegments.join('/') : null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Read an object by its full store URL. If the URL is not for this store, returns null.
+     * @param {string} url - Full URL (e.g. http://localhost:9000/films/uuid/cover.jpg)
+     * @returns {Promise<Buffer | null>} Object body or null
+     */
+    async readFromUrl(url) {
+        const key = this.keyFromUrl(url);
+        if (!key) return null;
+        try {
+            return await this.read(key);
+        } catch (err) {
+            logger.warn(COMPONENT, 'Read from URL failed', { url, key, error: err.message });
+            return null;
+        }
     }
 
     /**
