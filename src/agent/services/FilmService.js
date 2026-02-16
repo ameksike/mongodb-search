@@ -63,21 +63,61 @@ export class FilmService {
         return doc;
     }
 
+    /** Default page size for list. */
+    static get defaultPageSize() {
+        return 5;
+    }
+
+    /** Max page size allowed. */
+    static get maxPageSize() {
+        return 100;
+    }
+
     /**
-     * List films with optional pagination.
-     * @param {{ page?: number, limit?: number }} options
-     * @returns {Promise<{ _id: import('mongodb').ObjectId, title: string, description: string, coverImage?: string }[]>}
+     * List films with cursor-based efficient pagination. Fetches limit+1 to detect next page without a separate count.
+     * @param {{ page?: number, limit?: number, includeTotal?: boolean }} options - includeTotal: run countDocuments in parallel (extra query)
+     * @returns {Promise<{ items: object[], page: number, limit: number, total?: number, totalPages?: number, hasNextPage: boolean, hasPrevPage: boolean }>}
      */
     async findAll(options = {}) {
-        const { page = 1, limit = 20 } = options;
-        const skip = Math.max(0, (page - 1) * limit);
-        const cursor = this.collection
-            .find({}, { projection: FilmService.projection })
-            .skip(skip)
-            .limit(Math.min(100, Math.max(1, limit)));
-        const list = await cursor.toArray();
-        logger.info(COMPONENT, 'Films listed', { count: list.length, page, limit });
-        return list;
+        const limit = Math.min(FilmService.maxPageSize, Math.max(1, options.limit ?? FilmService.defaultPageSize));
+        const page = Math.max(1, options.page ?? 1);
+        const skip = (page - 1) * limit;
+        const includeTotal = options.includeTotal === true;
+
+        const filter = {};
+
+        const fetchItems = async () => {
+            const cursor = this.collection
+                .find(filter, { projection: FilmService.projection })
+                .sort({ _id: 1 })
+                .skip(skip)
+                .limit(limit + 1);
+            return cursor.toArray();
+        };
+
+        const [rows, total] = await Promise.all([
+            fetchItems(),
+            includeTotal ? this.collection.countDocuments(filter) : Promise.resolve(null),
+        ]);
+
+        const hasNextPage = rows.length > limit;
+        const items = hasNextPage ? rows.slice(0, limit) : rows;
+        const hasPrevPage = page > 1;
+
+        const result = {
+            items,
+            page,
+            limit,
+            hasNextPage,
+            hasPrevPage,
+        };
+        if (total !== null) {
+            result.total = total;
+            result.totalPages = Math.ceil(total / limit);
+        }
+
+        logger.info(COMPONENT, 'Films listed', { count: items.length, page, limit, hasNextPage });
+        return result;
     }
 
     /**

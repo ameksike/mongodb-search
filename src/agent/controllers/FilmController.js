@@ -50,9 +50,14 @@ export class FilmController {
     async list(req, res) {
         try {
             const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-            const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
-            const films = await this.filmService.findAll({ page, limit });
-            return res.status(200).json(films);
+            const limitParam = parseInt(req.query.limit, 10);
+            const limit = Number.isNaN(limitParam) || limitParam < 1
+                ? FilmService.defaultPageSize
+                : Math.min(FilmService.maxPageSize, limitParam);
+            const includeTotal = req.query.includeTotal === 'true';
+
+            const result = await this.filmService.findAll({ page, limit, includeTotal });
+            return res.status(200).json(result);
         } catch (err) {
             logger.error(COMPONENT, 'List failed', { error: err.message });
             return res.status(500).json({
