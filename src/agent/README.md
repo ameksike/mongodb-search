@@ -43,6 +43,16 @@ VOYAGE_MODEL=voyage-4-large
 
 # Ollama LLM (required for server)
 LLM_MODEL=phi3:mini
+LLM_CALL=true
+
+# Kozen options
+KOZEN_LOG_LEVEL=INFO
+KOZEN_LOG_TYPE=object
+KOZEN_MODULE_LOAD=@kozen/trigger
+KOZEN_TRIGGER_FILE=./src/agent/bin/watch.js
+KOZEN_TRIGGER_DATABASE=rag
+KOZEN_TRIGGER_COLLECTION=films
+KOZEN_TRIGGER_URI=MONGODB_URI
 ```
 
 For **setup** you can optionally set:

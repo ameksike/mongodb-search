@@ -5,6 +5,8 @@ import { RagService } from '../services/RagService.js';
 import { OllamaService } from '../services/OllamaService.js';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 import { RagController } from '../controllers/RagController.js';
+import { FilmController } from '../controllers/FilmController.js';
+import { FilmService } from '../services/FilmService.js';
 import { logger } from '../utils/logger.js';
 
 const {
@@ -38,31 +40,44 @@ try {
     await mongoClient.connect();
     logger.info(COMPONENT, 'MongoDB connected', { db: MONGODB_DB });
 
+    const voyage = new VoyageAIService({
+        apiUrl: VOYAGE_API_URL,
+        apiKey: VOYAGE_API_KEY,
+        model: VOYAGE_MODEL,
+    });
+
+    const db = mongoClient.db(MONGODB_DB);
+    const collection = db.collection(MONGODB_COLLECTION);
+
     const ragService = new RagService({
-        db: mongoClient.db(MONGODB_DB),
+        db,
         collectionName: MONGODB_COLLECTION,
-        srvVoyage: new VoyageAIService({
-            apiUrl: VOYAGE_API_URL,
-            apiKey: VOYAGE_API_KEY,
-            model: VOYAGE_MODEL,
-        }),
+        srvVoyage: voyage,
         srvLLM: new OllamaService({
             model: LLM_MODEL,
             call: LLM_CALL === 'true',
-        })
+        }),
     });
 
+    const filmService = new FilmService(collection, voyage);
     const ragController = new RagController(ragService);
+    const filmController = new FilmController(filmService);
 
     const app = express();
     app.use(express.json());
 
     app.use('/api/rag', ragController.router);
+    app.use('/api/films', filmController.router);
 
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
     app.listen(PORT, () => {
-        logger.info(COMPONENT, 'Listening', { url: `http://localhost:${PORT}`, health: '/api/health', ask: '/api/rag/ask' });
+        logger.info(COMPONENT, 'Listening', {
+            url: `http://localhost:${PORT}`,
+            health: '/api/health',
+            ask: '/api/rag/ask',
+            films: '/api/films'
+        });
     });
 } catch (err) {
     logger.error(COMPONENT, 'Bootstrap failed', { error: err.message });
