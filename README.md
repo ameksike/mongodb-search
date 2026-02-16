@@ -74,7 +74,7 @@ You get **small demos** per search type and a **full RAG agent** that uses them 
    npm run agent:start
    ```
 
-   Then call `POST /api/rag/ask` with `{ "question": "..." }` — see [Agent README](src/agent/README.md).
+   Then call `POST /api/films/ask` with `{ "question": "..." }` — see [Agent README](src/agent/README.md).
 
 ---
 

@@ -5,16 +5,19 @@ const COMPONENT = 'film';
 
 /**
  * Service for films CRUD. Uses the same collection as RAG; creates/updates compute text embedding via VoyageAI.
+ * When coverImageBuffer is provided, uploads to S3 (via S3Service) and stores the returned URL in coverImage.
  */
 export class FilmService {
 
     /**
      * @param {import('mongodb').Collection} collection - MongoDB collection (same as RAG)
-     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [srvVoyage] - Optional; required for create/update to embed description
+     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [srvVoyage] - Optional; for create/update to embed description
+     * @param {InstanceType<import('./S3Service.js').S3Service>} [srvS3] - Optional; for uploading cover image buffer to S3
      */
-    constructor(collection, srvVoyage) {
+    constructor(collection, srvVoyage, srvS3) {
         this.collection = collection;
         this.srvVoyage = srvVoyage;
+        this.srvS3 = srvS3;
     }
 
     /** Projection for film responses (no embedding). */
@@ -23,12 +26,29 @@ export class FilmService {
     }
 
     /**
+     * Resolve coverImage: if coverImageBuffer is provided and S3 is configured, upload and return URL; else return string coverImage.
+     * @param {{ coverImage?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string }} film
+     * @returns {Promise<string>}
+     */
+    async resolveCoverImage(film) {
+        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvS3) {
+            return this.srvS3.upload(film.coverImageBuffer, {
+                contentType: film.coverImageMimetype ?? 'application/octet-stream',
+                filename: film.coverImageOriginalname,
+            });
+        }
+        return film.coverImage ?? '';
+    }
+
+    /**
      * Create a film: embed description, insert document with embedding.text (embedding.image empty).
-     * @param {{ title: string, description: string, coverImage?: string, year?: number, genre?: string }} film
+     * If coverImageBuffer is provided, uploads to S3 and stores URL in coverImage.
+     * @param {{ title: string, description: string, coverImage?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string, year?: number, genre?: string }} film
      * @returns {Promise<{ _id: import('mongodb').ObjectId, title: string, description: string, coverImage?: string, year?: number, genre?: string }>}
      */
     async create(film) {
-        const { title, description, coverImage, year, genre } = film;
+        const { title, description, year, genre } = film;
+        const coverImage = await this.resolveCoverImage(film);
         const textToEmbed = [description ?? title ?? ''];
         const textEmbeddings = this.srvVoyage
             ? await this.srvVoyage.getEmbedding(textToEmbed)
@@ -36,7 +56,7 @@ export class FilmService {
         const doc = {
             title,
             description: description ?? '',
-            coverImage: coverImage ?? '',
+            coverImage,
             embedding: {
                 text: textEmbeddings[0] ?? [],
                 image: [],
@@ -122,8 +142,9 @@ export class FilmService {
 
     /**
      * Update a film; if description is provided, re-embed and update embedding.text.
+     * If coverImageBuffer is provided, uploads to S3 and sets coverImage to the returned URL.
      * @param {string} id - ObjectId string
-     * @param {{ title?: string, description?: string, coverImage?: string, year?: number, genre?: string }} film
+     * @param {{ title?: string, description?: string, coverImage?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string, year?: number, genre?: string }} film
      * @returns {Promise<{ _id: import('mongodb').ObjectId, title: string, description: string, coverImage?: string, year?: number, genre?: string } | null>}
      */
     async update(id, film) {
@@ -135,6 +156,9 @@ export class FilmService {
         if (film.title !== undefined) updateFields.title = film.title;
         if (film.description !== undefined) updateFields.description = film.description;
         if (film.coverImage !== undefined) updateFields.coverImage = film.coverImage;
+        if (Buffer.isBuffer(film.coverImageBuffer) && this.srvS3) {
+            updateFields.coverImage = await this.resolveCoverImage(film);
+        }
         if (film.year !== undefined) updateFields.year = film.year;
         if (film.genre !== undefined) updateFields.genre = film.genre;
 

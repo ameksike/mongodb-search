@@ -8,7 +8,8 @@ This module is a **Retrieval-Augmented Generation (RAG)** solution that answers 
 
 - **Setup:** Creates a MongoDB collection and vector search indexes on `embedding.text` and `embedding.image`.
 - **Seed:** Ingests a list of films (title, description, cover image path) from `src/agent/data/films.js`, computes text embeddings with VoyageAI, and stores documents with `embedding: { text, image }` (image vector can be added later or mirrored from text).
-- **API:** Exposes `POST /api/rag/ask`: the user sends a question, the server embeds it, runs vector search on the text index, retrieves top-k films, and the LLM answers using that context. Responses include the answer and the retrieved films (title, description, coverImage, score).
+- **API:** Exposes `POST /api/films/ask`: the user sends a question, the server embeds it, runs vector search on the text index, retrieves top-k films, and the LLM answers using that context. Responses include the answer and the retrieved films (title, description, coverImage, score).
+- **Films CRUD:** `GET/POST/PUT/DELETE /api/films` for managing films. Accepts **JSON** (`Content-Type: application/json`) or **multipart/form-data** (field `coverImage` for file upload). When a cover image file is sent and S3 is configured, it is uploaded to AWS S3 and the returned URL is stored in `coverImage`.
 
 All runnable commands are defined in the project root **`package.json`** and must be run from the **project root** (not from `src/agent`).
 
@@ -53,6 +54,14 @@ KOZEN_TRIGGER_FILE=./src/agent/bin/watch.js
 KOZEN_TRIGGER_DATABASE=rag
 KOZEN_TRIGGER_COLLECTION=films
 KOZEN_TRIGGER_URI=MONGODB_URI
+
+# AWS S3 (optional – for film cover image uploads via multipart/form-data)
+STORE_BUCKET=your-bucket-name
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+# Optional: custom public URL base (e.g. CloudFront)
+# STORE_PUBLIC_BASE_URL=https://d123.cloudfront.net
 ```
 
 For **setup** you can optionally set:
@@ -125,7 +134,7 @@ Expected: `{"status":"ok"}`
 
 ### 5. Ask a question (RAG Q&A)
 
-**Request:** `POST /api/rag/ask` with JSON body:
+**Request:** `POST /api/films/ask` with JSON body:
 
 ```json
 {
@@ -136,7 +145,7 @@ Expected: `{"status":"ok"}`
 **Example (cURL):**
 
 ```bash
-curl -X POST http://localhost:3000/api/rag/ask \
+curl -X POST http://localhost:3000/api/films/ask \
   -H "Content-Type: application/json" \
   -d "{\"question\": \"What is the movie about a general who is forced to become a warrior fighting for his life?\"}"
 ```
@@ -144,7 +153,7 @@ curl -X POST http://localhost:3000/api/rag/ask \
 **Example (PowerShell):**
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/films/ask" `
   -ContentType "application/json" `
   -Body '{"question": "What is the movie about a general who is forced to become a warrior fighting for his life?"}'
 ```
@@ -190,7 +199,7 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/rag/ask" `
 | Method | Path           | Description                                                                                                                          |
 | ------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | GET    | `/api/health`  | Health check. Returns `{ "status": "ok" }`.                                                                                          |
-| POST   | `/api/rag/ask` | RAG Q&A. Body: `{ "question": "..." }`. Returns `{ "answer", "contextChunks" }` (each chunk: title, description, coverImage, score). |
+| POST   | `/api/films/ask` | RAG Q&A. Body: `{ "question": "..." }`. Returns `{ "answer", "contextChunks" }` (each chunk: title, description, coverImage, score). |
 
 ---
 
@@ -221,7 +230,7 @@ Each stored document has the form:
 | Path             | Role                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | **bin/**         | Runnable entry points: `server.js` (API), `ingest.js` (seed), `setup.js` (collection + indexes), `download.js` (poster images). |
-| **controllers/** | `RagController.js` – Express routes for `/api/rag/ask`.                                                                         |
+| **controllers/** | `RagController.js` – Express routes for `/api/films/ask`.                                                                         |
 | **services/**    | `RagService`, `SeedService`, `SetupService`, `VoyageAIService`, `OllamaService` – business logic and external APIs.             |
 | **data/**        | `films.js` – list of films (title, url, coverImage, text). `img/` – cover images (e.g. poster-001.jpg …).                       |
 | **utils/**       | `logger.js` – standardized logging.                                                                                             |

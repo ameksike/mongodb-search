@@ -1,8 +1,60 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { FilmService } from '../services/FilmService.js';
 import { logger } from '../utils/logger.js';
 
 const COMPONENT = 'film';
+
+/** Max cover image size (5MB). */
+const COVER_IMAGE_LIMIT = 5 * 1024 * 1024;
+
+/** Multer memory storage for multipart; single file field "coverImage". */
+const uploadCover = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: COVER_IMAGE_LIMIT },
+}).single('coverImage');
+
+/**
+ * Run multer only when request is multipart/form-data so JSON body is left to express.json().
+ * @param {express.Request} req
+ * @param {express.Response} res
+ * @param {express.NextFunction} next
+ */
+function multipart(req, res, next) {
+    if (req.is('multipart/form-data')) {
+        uploadCover(req, res, (err) => {
+            if (err) {
+                logger.warn(COMPONENT, 'Multipart parse failed', { error: err.message });
+                return res.status(400).json({ error: err.message });
+            }
+            next();
+        });
+    } else next();
+}
+
+/**
+ * Normalize payload from req (JSON or form-data). Form-data fields are strings; year is parsed.
+ * @param {express.Request} req
+ * @returns {{ title?: string, description?: string, coverImage?: string, year?: number, genre?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string }}
+ */
+function normalizeFilmBody(req) {
+    const body = req.body ?? {};
+    const title = body.title != null ? String(body.title).trim() : undefined;
+    const description = body.description != null ? String(body.description).trim() : undefined;
+    let coverImage = body.coverImage != null ? String(body.coverImage).trim() : undefined;
+    let year = body.year;
+    if (typeof year === 'string') year = parseInt(year, 10);
+    if (typeof year !== 'number' || !Number.isInteger(year)) year = undefined;
+    const genre = body.genre != null ? String(body.genre).trim() : undefined;
+
+    const payload = { title, description, coverImage, year, genre };
+    if (req.file && Buffer.isBuffer(req.file.buffer)) {
+        payload.coverImageBuffer = req.file.buffer;
+        payload.coverImageMimetype = req.file.mimetype ?? 'application/octet-stream';
+        payload.coverImageOriginalname = req.file.originalname ?? '';
+    }
+    return payload;
+}
 
 export class FilmController {
 
@@ -16,26 +68,30 @@ export class FilmController {
     }
 
     registerRoutes() {
-        this.router.post('/', this.create.bind(this));
+        this.router.post('/', multipart, this.create.bind(this));
         this.router.get('/', this.list.bind(this));
         this.router.get('/:id', this.getOne.bind(this));
-        this.router.put('/:id', this.update.bind(this));
+        this.router.put('/:id', multipart, this.update.bind(this));
         this.router.delete('/:id', this.delete.bind(this));
     }
 
     async create(req, res) {
         try {
-            const { title, description, coverImage, year, genre } = req.body ?? {};
-            if (!title || typeof title !== 'string' || title.trim() === '') {
+            const payload = normalizeFilmBody(req);
+            const title = payload.title;
+            if (!title || title === '') {
                 logger.warn(COMPONENT, 'Create rejected', { reason: 'Missing or invalid title' });
                 return res.status(400).json({ error: 'Missing or invalid "title" field' });
             }
             const film = await this.filmService.create({
-                title: title.trim(),
-                description: typeof description === 'string' ? description.trim() : '',
-                coverImage: typeof coverImage === 'string' ? coverImage.trim() : undefined,
-                year: typeof year === 'number' && Number.isInteger(year) ? year : undefined,
-                genre: typeof genre === 'string' ? genre.trim() : undefined,
+                title,
+                description: payload.description ?? '',
+                coverImage: payload.coverImage,
+                year: payload.year,
+                genre: payload.genre,
+                coverImageBuffer: payload.coverImageBuffer,
+                coverImageMimetype: payload.coverImageMimetype,
+                coverImageOriginalname: payload.coverImageOriginalname,
             });
             return res.status(201).json(film);
         } catch (err) {
@@ -87,18 +143,23 @@ export class FilmController {
     async update(req, res) {
         try {
             const { id } = req.params;
-            const { title, description, coverImage, year, genre } = req.body ?? {};
+            const payload = normalizeFilmBody(req);
             const updates = {};
-            if (title !== undefined) {
-                if (typeof title !== 'string') {
+            if (payload.title !== undefined) {
+                if (typeof payload.title !== 'string' || payload.title === '') {
                     return res.status(400).json({ error: 'Invalid "title" field' });
                 }
-                updates.title = title.trim();
+                updates.title = payload.title;
             }
-            if (description !== undefined) updates.description = typeof description === 'string' ? description.trim() : '';
-            if (coverImage !== undefined) updates.coverImage = typeof coverImage === 'string' ? coverImage.trim() : '';
-            if (year !== undefined && typeof year === 'number' && Number.isInteger(year)) updates.year = year;
-            if (genre !== undefined) updates.genre = typeof genre === 'string' ? genre.trim() : '';
+            if (payload.description !== undefined) updates.description = payload.description;
+            if (payload.coverImage !== undefined) updates.coverImage = payload.coverImage;
+            if (payload.year !== undefined) updates.year = payload.year;
+            if (payload.genre !== undefined) updates.genre = payload.genre;
+            if (payload.coverImageBuffer) {
+                updates.coverImageBuffer = payload.coverImageBuffer;
+                updates.coverImageMimetype = payload.coverImageMimetype;
+                updates.coverImageOriginalname = payload.coverImageOriginalname;
+            }
 
             if (Object.keys(updates).length === 0) {
                 const current = await this.filmService.findById(id);

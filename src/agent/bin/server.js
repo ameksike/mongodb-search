@@ -7,6 +7,7 @@ import { VoyageAIService } from '../services/VoyageAIService.js';
 import { RagController } from '../controllers/RagController.js';
 import { FilmController } from '../controllers/FilmController.js';
 import { FilmService } from '../services/FilmService.js';
+import { S3Service } from '../services/S3Service.js';
 import { logger } from '../utils/logger.js';
 
 const {
@@ -18,6 +19,8 @@ const {
     VOYAGE_MODEL,
     LLM_MODEL,
     LLM_CALL,
+    STORE_BUCKET,
+    AWS_REGION,
     PORT = 3000,
 } = process.env;
 
@@ -59,7 +62,8 @@ try {
         }),
     });
 
-    const filmService = new FilmService(collection, voyage);
+    const s3Service = STORE_BUCKET ? new S3Service({ bucket: STORE_BUCKET, region: AWS_REGION }) : null;
+    const filmService = new FilmService(collection, voyage, s3Service);
     const ragController = new RagController(ragService);
     const filmController = new FilmController(filmService);
 
@@ -75,7 +79,7 @@ try {
         logger.info(COMPONENT, 'Listening', {
             url: `http://localhost:${PORT}`,
             health: '/api/health',
-            ask: '/api/rag/ask',
+            ask: '/api/films/ask',
             films: '/api/films'
         });
     });
