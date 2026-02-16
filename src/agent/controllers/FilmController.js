@@ -127,7 +127,7 @@ export class FilmController {
             if (!deleted) {
                 return res.status(404).json({ error: 'Film not found' });
             }
-            return res.status(204).send();
+            return res.status(200).json(deleted);
         } catch (err) {
             logger.error(COMPONENT, 'Delete failed', { error: err.message });
             return res.status(500).json({

@@ -154,15 +154,24 @@ export class FilmService {
     }
 
     /**
-     * Delete a film by id.
+     * Delete a film by id. Returns the deleted document (without embedding) or null if not found.
      * @param {string} id - ObjectId string
-     * @returns {Promise<boolean>} true if deleted
+     * @returns {Promise<{ _id: import('mongodb').ObjectId, title: string, description: string, coverImage?: string, year?: number, genre?: string } | null>}
      */
     async delete(id) {
-        if (!ObjectId.isValid(id)) return false;
+        if (!ObjectId.isValid(id)) return null;
+        const doc = await this.collection.findOne(
+            { _id: new ObjectId(id) },
+            { projection: FilmService.projection }
+        );
+        if (!doc) return null;
         const res = await this.collection.deleteOne({ _id: new ObjectId(id) });
         const deleted = res.deletedCount === 1;
-        if (deleted) logger.info(COMPONENT, 'Film deleted', { id });
-        return deleted;
+        if (!deleted) {
+            logger.warn(COMPONENT, 'Failed to delete film', { id });
+            return null;
+        }
+        logger.info(COMPONENT, 'Film deleted', { id });
+        return doc;
     }
 }
