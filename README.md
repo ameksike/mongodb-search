@@ -218,6 +218,35 @@ docker compose down
 docker compose stop agent-web agent-watch
 ```
 
+**Access a container shell** (inspect files, run commands):
+
+From **cmd** (Windows) or **PowerShell**:
+
+```cmd
+docker exec -it agent-web sh
+```
+
+From **bash** (Linux/macOS):
+
+```bash
+docker exec -it agent-web sh
+```
+
+Inside the container you get a shell in the app directory (`/app`). You can list files (`ls`, `dir`), run Node (`node -v`), or run npm scripts. Exit with `exit` or Ctrl+D.
+
+To run a **single command** without opening a shell:
+
+```cmd
+docker exec agent-web ls -la /app
+docker exec agent-web node -v
+```
+
+For **agent-watch** use the same with container name `agent-watch`:
+
+```cmd
+docker exec -it agent-watch sh
+```
+
 ### Quick reference
 
 | Goal                         | Command |
@@ -231,6 +260,7 @@ docker compose stop agent-web agent-watch
 | Only Ollama                 | `docker compose up -d ollama` |
 | Build/rebuild app image     | `docker compose build` |
 | Logs                        | `docker compose logs -f [service]` |
+| Shell in agent-web          | `docker exec -it agent-web sh` |
 | Stop                        | `docker compose down` |
 
 After starting **agent-web**, the API is at `http://localhost:3000` (or the host port you set with `PORT`). Run **agent:setup** and **agent:seed** once (e.g. from the host with `npm run agent:setup` and `npm run agent:seed` using the same `.env` and `MONGODB_URI` pointing to `localhost:27017` if mongo is in Docker).
