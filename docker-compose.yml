@@ -57,17 +57,21 @@ services:
     env_file:
       - .env
     environment:
-      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
       MONGODB_DB: ${MONGODB_DB:-rag}
       MONGODB_COLLECTION: ${MONGODB_COLLECTION:-films}
       PORT: "3000"
       LLM_URL: http://ollama:11434
+      LLM_CALL: ${LLM_CALL:-false}
+      LLM_MODEL: ${LLM_MODEL:-phi3:mini}
       STORE_ENDPOINT: http://minio:9000
+      STORE_DRIVER: ${STORE_DRIVER:-MinIO}
+      STORE_BUCKET: ${STORE_BUCKET:-films}
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-admin12345}
     depends_on:
-      mongo:
-        condition: service_healthy
+      # mongo:
+      #   condition: service_healthy
       ollama:
         condition: service_started
       minio:
@@ -82,19 +86,21 @@ services:
     env_file:
       - .env
     environment:
-      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
       MONGODB_DB: ${MONGODB_DB:-rag}
       MONGODB_COLLECTION: ${MONGODB_COLLECTION:-films}
-      KOZEN_TRIGGER_URI: mongodb://mongo:27017
+      KOZEN_TRIGGER_URI: MONGODB_URI
       KOZEN_TRIGGER_DATABASE: ${MONGODB_DB:-rag}
       KOZEN_TRIGGER_COLLECTION: ${MONGODB_COLLECTION:-films}
-      KOZEN_TRIGGER_FILE: ${KOZEN_TRIGGER_FILE:-/app/src/agent/bin/watch.js}
+      KOZEN_TRIGGER_FILE: /app/src/agent/bin/watch.js
       STORE_ENDPOINT: http://minio:9000
+      STORE_DRIVER: ${STORE_DRIVER:-MinIO}
+      STORE_BUCKET: ${STORE_BUCKET:-films}
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-admin12345}
     depends_on:
-      mongo:
-        condition: service_healthy
+      # mongo:
+      #   condition: service_healthy
       minio:
         condition: service_started
     restart: unless-stopped
