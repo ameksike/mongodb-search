@@ -5,6 +5,9 @@ import { RagService } from '../services/RagService.js';
 import { OllamaService } from '../services/OllamaService.js';
 import { VoyageAIService } from '../services/VoyageAIService.js';
 import { RagController } from '../controllers/RagController.js';
+import { FilmController } from '../controllers/FilmController.js';
+import { FilmService } from '../services/FilmService.js';
+import { StoreService } from '../services/StoreService.js';
 import { logger } from '../utils/logger.js';
 
 const {
@@ -16,7 +19,12 @@ const {
     VOYAGE_MODEL,
     LLM_MODEL,
     LLM_CALL,
+    LLM_URL,
     PORT = 3000,
+    AWS_REGION,
+    STORE_BUCKET = 'films',
+    STORE_ENDPOINT = 'http://127.0.0.1:9000',
+    STORE_DRIVER = 'MinIO',
 } = process.env;
 
 const COMPONENT = 'server';
@@ -38,31 +46,53 @@ try {
     await mongoClient.connect();
     logger.info(COMPONENT, 'MongoDB connected', { db: MONGODB_DB });
 
+    const srvVoyage = new VoyageAIService({
+        apiUrl: VOYAGE_API_URL,
+        apiKey: VOYAGE_API_KEY,
+        model: VOYAGE_MODEL,
+    });
+
+    const db = mongoClient.db(MONGODB_DB);
+    const collection = db.collection(MONGODB_COLLECTION);
+
     const ragService = new RagService({
-        db: mongoClient.db(MONGODB_DB),
+        db,
+        srvVoyage,
         collectionName: MONGODB_COLLECTION,
-        srvVoyage: new VoyageAIService({
-            apiUrl: VOYAGE_API_URL,
-            apiKey: VOYAGE_API_KEY,
-            model: VOYAGE_MODEL,
-        }),
         srvLLM: new OllamaService({
             model: LLM_MODEL,
             call: LLM_CALL === 'true',
-        })
+            baseUrl: LLM_URL,
+        }),
     });
 
+    const srvStore = STORE_BUCKET
+        ? new StoreService({
+            bucket: STORE_BUCKET,
+            region: AWS_REGION,
+            endpoint: STORE_ENDPOINT,
+            driver: STORE_DRIVER,
+        })
+        : null;
+    const filmService = new FilmService({ collection, srvStore });
     const ragController = new RagController(ragService);
+    const filmController = new FilmController(filmService);
 
     const app = express();
     app.use(express.json());
 
     app.use('/api/rag', ragController.router);
+    app.use('/api/films', filmController.router);
 
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-    app.listen(PORT, () => {
-        logger.info(COMPONENT, 'Listening', { url: `http://localhost:${PORT}`, health: '/api/health', ask: '/api/rag/ask' });
+    app.listen(PORT, '0.0.0.0', () => {
+        logger.info(COMPONENT, 'Listening', {
+            url: `http://localhost:${PORT}`,
+            health: '/api/health',
+            ask: '/api/films/ask',
+            films: '/api/films'
+        });
     });
 } catch (err) {
     logger.error(COMPONENT, 'Bootstrap failed', { error: err.message });

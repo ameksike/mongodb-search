@@ -1,4 +1,20 @@
 services:
+  # MongoDB for RAG/films collection and change streams (used by agent-web and agent-watch).
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./tmp/mongo:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -14,3 +30,78 @@ services:
         ollama pull phi3:mini &&
         wait
       "
+
+  # MinIO: S3-compatible object storage (e.g. for film cover images).
+  # App connects via S3_ENDPOINT=http://localhost:9000, STORE_BUCKET=films,
+  # AWS_ACCESS_KEY_ID=admin, AWS_SECRET_ACCESS_KEY=admin12345.
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"   # S3-compatible API
+      - "9001:9001"   # Web console
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin12345
+    volumes:
+      - ./tmp/minio:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+  # Web API: same as npm run agent:start.
+  agent-web:
+    build: .
+    container_name: agent-web
+    ports:
+      - "0.0.0.0:3000:3000"
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      MONGODB_DB: ${MONGODB_DB:-rag}
+      MONGODB_COLLECTION: ${MONGODB_COLLECTION:-films}
+      PORT: "3000"
+      LLM_URL: http://ollama:11434
+      LLM_CALL: ${LLM_CALL:-false}
+      LLM_MODEL: ${LLM_MODEL:-phi3:mini}
+      STORE_ENDPOINT: http://minio:9000
+      STORE_DRIVER: ${STORE_DRIVER:-MinIO}
+      STORE_BUCKET: ${STORE_BUCKET:-films}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-admin12345}
+    depends_on:
+      # mongo:
+      #   condition: service_healthy
+      ollama:
+        condition: service_started
+      minio:
+        condition: service_started
+    restart: unless-stopped
+    command: ["npm", "run", "agent:start"]
+
+  # Watch/trigger: same as npm run agent:watch. Listens to MongoDB change stream and runs insert trigger (embeddings).
+  agent-watch:
+    build: .
+    container_name: agent-watch
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      MONGODB_DB: ${MONGODB_DB:-rag}
+      MONGODB_COLLECTION: ${MONGODB_COLLECTION:-films}
+      KOZEN_TRIGGER_URI: MONGODB_URI
+      KOZEN_TRIGGER_DATABASE: ${MONGODB_DB:-rag}
+      KOZEN_TRIGGER_COLLECTION: ${MONGODB_COLLECTION:-films}
+      KOZEN_TRIGGER_FILE: /app/src/agent/bin/watch.js
+      STORE_ENDPOINT: http://minio:9000
+      STORE_DRIVER: ${STORE_DRIVER:-MinIO}
+      STORE_BUCKET: ${STORE_BUCKET:-films}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-admin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-admin12345}
+    depends_on:
+      # mongo:
+      #   condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+    command: ["npm", "run", "agent:watch"]

@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'rag';
+const COMPONENT = 'service:rag';
 
 export class RagService {
 

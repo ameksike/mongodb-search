@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-const COMPONENT = 'seed';
+const COMPONENT = 'service:seed';
 
 /**
  * Service responsible for seeding the RAG collection: embed full document text via VoyageAI, insert into MongoDB.
@@ -19,7 +19,7 @@ export class SeedService {
 
     /**
      * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ title: string, url: string, text: string, coverImage: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
+     * @param {{ title: string, url: string, text: string, coverImage: string, year?: number, genre?: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
      */
     async run(documents) {
         try {
@@ -38,7 +38,7 @@ export class SeedService {
             logger.info(COMPONENT, 'Image Embeddings received', { count: imageEmbeddings?.length ?? 0 });
 
             const docsToInsert = documents.map((doc, i) => {
-                return {
+                const base = {
                     title: doc.title,
                     description: doc.text,
                     coverImage: doc.coverImage ?? doc.url,
@@ -47,6 +47,9 @@ export class SeedService {
                         image: (imageEmbeddings && imageEmbeddings[i]) || []
                     },
                 };
+                if (doc.year !== undefined) base.year = doc.year;
+                if (doc.genre !== undefined) base.genre = doc.genre;
+                return base;
             });
 
             const res = await this.collection.insertMany(docsToInsert);

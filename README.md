@@ -28,6 +28,7 @@ This repository explores **different search capabilities on MongoDB** and **appl
 ### ⚡ Quick Links
 
 - [▶️ Quick Start](#-quick-start)
+- [🐳 Docker Compose](#-docker-compose)
 - [📜 Scripts](#-scripts-packagejson)
 - [🔗 References](#-references)
 - [📄 License](#-license)
@@ -74,7 +75,7 @@ You get **small demos** per search type and a **full RAG agent** that uses them 
    npm run agent:start
    ```
 
-   Then call `POST /api/rag/ask` with `{ "question": "..." }` — see [Agent README](src/agent/README.md).
+   Then call `POST /api/films/ask` with `{ "question": "..." }` — see [Agent README](src/agent/README.md).
 
 ---
 
@@ -96,6 +97,146 @@ Run all from the **project root**. Search demos read config from `.env` (see com
 
 ---
 
+## 🐳 Docker Compose
+
+You can run the full stack or only some services with Docker Compose. Use a **`.env`** file at the project root so that secrets are not hardcoded; the examples below use **generic placeholders** (replace with your real values locally and never commit real secrets).
+
+### Services
+
+| Service       | Purpose                                      | Ports              |
+|---------------|----------------------------------------------|--------------------|
+| **mongo**     | MongoDB for RAG/films and change streams     | 27017              |
+| **ollama**    | LLM (e.g. phi3:mini) for RAG answers         | 11434              |
+| **minio**     | S3-compatible storage for film cover images  | 9000 (API), 9001 (console) |
+| **agent-web** | HTTP API — same as `npm run agent:start`     | 3000 (or `PORT`)   |
+| **agent-watch** | Change-stream trigger — same as `npm run agent:watch` | —                |
+
+### Example `.env` (no real secrets)
+
+Create a **`.env`** in the project root. Use **generic placeholders** like `password` or `your-api-key`; replace them with real values only on your machine and **do not commit** real credentials.
+
+```env
+# --- MongoDB (when using Docker mongo service, MONGODB_URI is overridden in compose) ---
+MONGODB_URI=mongodb://mongo:27017
+MONGODB_DB=rag
+MONGODB_COLLECTION=films
+
+# --- VoyageAI (required for agent-web and agent:seed) ---
+VOYAGE_API_URL=https://api.voyageai.com/v1/embeddings
+VOYAGE_API_KEY=your-voyage-api-key
+VOYAGE_MODEL=voyage-4-large
+
+# --- Ollama / LLM (agent-web uses LLM_URL from compose when running in Docker) ---
+LLM_MODEL=phi3:mini
+LLM_CALL=true
+
+# --- MinIO (Docker): use same values as in docker-compose for agent-web/agent-watch ---
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=password
+STORE_BUCKET=films
+STORE_ENDPOINT=http://minio:9000
+STORE_DRIVER=MinIO
+AWS_ACCESS_KEY_ID=admin
+AWS_SECRET_ACCESS_KEY=password
+
+# --- Optional ---
+PORT=3000
+KOZEN_TRIGGER_DATABASE=rag
+KOZEN_TRIGGER_COLLECTION=films
+KOZEN_TRIGGER_FILE=./src/agent/bin/watch.js
+```
+
+Keep **real** `VOYAGE_API_KEY` and any production passwords only in your local `.env` (and ensure `.env` is in `.gitignore`).
+
+### How to start services
+
+All commands are run from the **project root**. Build the app image once with:
+
+```bash
+docker compose build
+```
+
+Then choose one of the following.
+
+**Start everything (mongo, ollama, minio, agent-web, agent-watch):**
+
+```bash
+docker compose up -d
+```
+
+**Start only infrastructure (no app containers):**
+
+```bash
+docker compose up -d mongo minio ollama
+```
+
+**Start only the web API** (needs mongo, ollama, minio — start them first or use `depends_on`):
+
+```bash
+docker compose up -d mongo ollama minio
+docker compose up -d agent-web
+```
+
+Or in one line, selecting only the services you want:
+
+```bash
+docker compose up -d mongo minio ollama agent-web
+```
+
+**Start only the watch/trigger** (needs mongo and minio):
+
+```bash
+docker compose up -d mongo minio agent-watch
+```
+
+**Start a single service** (e.g. only MongoDB, or only MinIO):
+
+```bash
+docker compose up -d mongo
+docker compose up -d minio
+docker compose up -d ollama
+```
+
+**Use an alternate env file** (e.g. for staging):
+
+```bash
+docker compose --env-file .env.staging up -d
+```
+
+**View logs** (all services, or one):
+
+```bash
+docker compose logs -f
+docker compose logs -f agent-web
+docker compose logs -f agent-watch
+```
+
+**Stop all or specific services:**
+
+```bash
+docker compose down
+docker compose stop agent-web agent-watch
+```
+
+### Quick reference
+
+| Goal                         | Command |
+|-----------------------------|--------|
+| All services                | `docker compose up -d` |
+| Only DB + storage + LLM     | `docker compose up -d mongo minio ollama` |
+| Only API (web)              | `docker compose up -d mongo minio ollama agent-web` |
+| Only trigger (watch)        | `docker compose up -d mongo minio agent-watch` |
+| Only MongoDB                | `docker compose up -d mongo` |
+| Only MinIO                  | `docker compose up -d minio` |
+| Only Ollama                 | `docker compose up -d ollama` |
+| Build/rebuild app image     | `docker compose build` |
+| Logs                        | `docker compose logs -f [service]` |
+| Stop                        | `docker compose down` |
+
+After starting **agent-web**, the API is at `http://localhost:3000` (or the host port you set with `PORT`). Run **agent:setup** and **agent:seed** once (e.g. from the host with `npm run agent:setup` and `npm run agent:seed` using the same `.env` and `MONGODB_URI` pointing to `localhost:27017` if mongo is in Docker).
+
+---
+
 ## 🔗 References
 
 ### MongoDB search
@@ -112,7 +253,7 @@ Run all from the **project root**. Search demos read config from `.env` (see com
         - [How to Index Fields for Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-type/?deployment-type=atlas&embedding=byo&interface=driver&language=python#how-to-index-fields-for-vector-search)
         - [Manage MongoDB Search Indexes](https://www.mongodb.com/docs/atlas/atlas-search/manage-indexes/?deployment-type=atlas&interface=driver&language=python)
 
-### AI / RAG / Agents
+### Tools
 - LangChain
     - [LangChain Quickstart](https://docs.langchain.com/oss/javascript/langchain/quickstart)
     - [LangChain Chat](https://chat.langchain.com/)
@@ -120,7 +261,10 @@ Run all from the **project root**. Search demos read config from `.env` (see com
 - VoyageAI
     - [VoyageAI Embeddings](https://docs.voyageai.com/docs/embeddings)
     - [Manage Projects](https://dashboard.voyageai.com/organization/projects)
-- [Agentic Yield Analytics with MongoDB](https://www.mongodb.com/docs/atlas/architecture/current/solutions-library/agentic-yield-analytics/)
+    - [Agentic Yield Analytics with MongoDB](https://www.mongodb.com/docs/atlas/architecture/current/solutions-library/agentic-yield-analytics/)
+- MinIO
+    - [How to Run MinIO in Docker (S3-Compatible Object Storage)](https://oneuptime.com/blog/post/2026-02-08-how-to-run-minio-in-docker-s3-compatible-object-storage/view)
+    - [MinIO Docker: Setup Guide for S3-Compatible Object Storage](https://www.datacamp.com/tutorial/minio-docker)
 ---
 
 ## 📄 License

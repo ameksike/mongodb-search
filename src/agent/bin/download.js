@@ -7,12 +7,14 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { films as seedDocuments } from '../data/films.js';
+import { films, filmsExtra } from '../data/films.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const IMG_DIR = path.join(__dirname, 'img');
 const WIDTH = 300;
 const HEIGHT = 450;
+
+const seedDocuments = [...films, ...filmsExtra];
 
 if (!fs.existsSync(IMG_DIR)) {
     fs.mkdirSync(IMG_DIR, { recursive: true });
