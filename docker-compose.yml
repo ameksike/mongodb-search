@@ -48,12 +48,12 @@ services:
     command: server /data --console-address ":9001"
     restart: unless-stopped
 
-  # Web API: same as npm run agent:start. Needs .env with VOYAGE_API_KEY (and optional VOYAGE_API_URL, VOYAGE_MODEL, etc.).
+  # Web API: same as npm run agent:start.
   agent-web:
     build: .
     container_name: agent-web
     ports:
-      - "${PORT:-3000}:3000"
+      - "0.0.0.0:3000:3000"
     env_file:
       - .env
     environment:

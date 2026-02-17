@@ -86,7 +86,7 @@ try {
 
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
         logger.info(COMPONENT, 'Listening', {
             url: `http://localhost:${PORT}`,
             health: '/api/health',
