@@ -19,11 +19,12 @@ const {
     VOYAGE_MODEL,
     LLM_MODEL,
     LLM_CALL,
+    LLM_URL,
     PORT = 3000,
     AWS_REGION,
     STORE_BUCKET = 'films',
     STORE_ENDPOINT = 'http://127.0.0.1:9000',
-    STORE_DRIVER='MinIO',
+    STORE_DRIVER = 'MinIO',
 } = process.env;
 
 const COMPONENT = 'server';
@@ -61,6 +62,7 @@ try {
         srvLLM: new OllamaService({
             model: LLM_MODEL,
             call: LLM_CALL === 'true',
+            baseUrl: LLM_URL,
         }),
     });
 
