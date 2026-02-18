@@ -1,39 +1,9 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { FilmService } from '../services/FilmService.js';
 import { logger } from '../utils/logger.js';
+import { multipart } from '../utils/utl.js';
 
 const COMPONENT = 'controller:film';
-
-/** Max cover image size (5MB). */
-const COVER_IMAGE_LIMIT = process.env.STORE_IMAGE_LIMIT ? parseInt(process.env.STORE_IMAGE_LIMIT, 10) : 5 * 1024 * 1024;
-
-/** Multer: accept one file from either "coverImage" or "image" to avoid LIMIT_UNEXPECTED_FILE when client uses a different field name. */
-const uploadCover = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: COVER_IMAGE_LIMIT },
-}).fields([
-    { name: 'coverImage', maxCount: 1 },
-    { name: 'image', maxCount: 1 },
-]);
-
-/**
- * Run multer only when request is multipart/form-data so JSON body is left to express.json().
- * @param {express.Request} req
- * @param {express.Response} res
- * @param {express.NextFunction} next
- */
-function multipart(req, res, next) {
-    if (req.is('multipart/form-data')) {
-        uploadCover(req, res, (err) => {
-            if (err) {
-                logger.warn(COMPONENT, 'Multipart parse failed', { error: err.message, code: err.code });
-                return res.status(400).json({ error: err.message });
-            }
-            next();
-        });
-    } else next();
-}
 
 export class FilmController {
 
