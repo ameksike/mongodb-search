@@ -44,42 +44,62 @@ function mimeFromUrl(url) {
  */
 export async function insert(change, tools) {
     const { assistant, dbName, collectionName, collection } = tools;
+    // Initialize an object to hold the new fields to be added to the document
+    const updatedDoc = { embedding: {} };
 
     try {
-        // Initialize an object to hold the new fields to be added to the document
-        const updatedDoc = { embedding: {} };
+        if (!change?.fullDocument?.embedding?.text) {
+            // Generate text embedding if description field exists in the inserted document
+            const textContent = change?.fullDocument?.description || '';
+            const textEmbedding = textContent && await srvVoyage.getEmbedding(textContent);
 
-        // Generate text embedding if description field exists in the inserted document
-        const textContent = change?.fullDocument?.description || '';
-        const textEmbedding = textContent && await srvVoyage.getEmbedding(textContent);
-
-        // Log a warning if no text embedding was generated for a document that has a description field
-        if (!textEmbedding?.length) {
+            // Log a warning if no text embedding was generated for a document that has a description field
+            if (!textEmbedding?.length) {
+                assistant?.logger?.warn({
+                    flow: tools.flow,
+                    message: "No text embedding generated for document",
+                    data: {
+                        database: dbName,
+                        collection: collectionName,
+                        documentKey: change.documentKey,
+                        description: textContent,
+                    },
+                });
+            } else {
+                updatedDoc.embedding.text = textEmbedding;
+            }
+        } else {
             assistant?.logger?.warn({
                 flow: tools.flow,
-                message: "No text embedding generated for document",
-                data: {
-                    database: dbName,
-                    collection: collectionName,
-                    documentKey: change.documentKey,
-                    description: textContent,
-                },
+                message: "Text embedding already exist"
             });
-        } else {
-            updatedDoc.embedding.text = textEmbedding;
         }
 
-        // If document has coverImage and we have store + multimodal, load image from store and get image embedding
-        const coverImageUrl = change?.fullDocument?.coverImage;
-        if (coverImageUrl && storeService) {
-            const imageBuffer = await storeService.readFromUrl(coverImageUrl);
-            if (imageBuffer?.length) {
-                const mimeType = mimeFromUrl(coverImageUrl);
-                const imageEmbedding = await srvVoyage.getImageEmbedding(imageBuffer, mimeType);
-                if (!imageEmbedding?.length) {
+        if (!change?.fullDocument?.embedding?.image) {
+            // If document has coverImage and we have store + multimodal, load image from store and get image embedding
+            const coverImageUrl = change?.fullDocument?.coverImage;
+            if (coverImageUrl && storeService) {
+                const imageBuffer = await storeService.readFromUrl(coverImageUrl);
+                if (imageBuffer?.length) {
+                    const mimeType = mimeFromUrl(coverImageUrl);
+                    const imageEmbedding = await srvVoyage.getImageEmbedding(imageBuffer, mimeType);
+                    if (!imageEmbedding?.length) {
+                        assistant?.logger?.warn({
+                            flow: tools.flow,
+                            message: "No image embedding generated for document",
+                            data: {
+                                database: dbName,
+                                collection: collectionName,
+                                documentKey: change.documentKey,
+                                coverImageUrl,
+                            },
+                        });
+                    }
+                    updatedDoc.embedding.image = imageEmbedding;
+                } else {
                     assistant?.logger?.warn({
                         flow: tools.flow,
-                        message: "No image embedding generated for document",
+                        message: "Failed to load image from store for embedding",
                         data: {
                             database: dbName,
                             collection: collectionName,
@@ -88,19 +108,12 @@ export async function insert(change, tools) {
                         },
                     });
                 }
-                updatedDoc.embedding.image = imageEmbedding;
-            } else {
-                assistant?.logger?.warn({
-                    flow: tools.flow,
-                    message: "Failed to load image from store for embedding",
-                    data: {
-                        database: dbName,
-                        collection: collectionName,
-                        documentKey: change.documentKey,
-                        coverImageUrl,
-                    },
-                });
             }
+        } else {
+            assistant?.logger?.warn({
+                flow: tools.flow,
+                message: "Image embedding already exist"
+            });
         }
 
         // Skip update if no embeddings were generated
