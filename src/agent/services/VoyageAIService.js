@@ -2,6 +2,25 @@ import { logger } from '../utils/logger.js';
 
 const COMPONENT = 'service:voyage';
 
+/**
+ * Image MIME types supported by Voyage AI multimodal embedding API (image_base64).
+ * Images can be in any of these formats for embeddings to work correctly.
+ * @see https://docs.voyageai.com/docs/multimodal-embeddings
+ */
+export const SUPPORTED_IMAGE_MIME_TYPES = Object.freeze([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+]);
+
+const MIME_ALIASES = Object.freeze({ 'image/jpg': 'image/jpeg' });
+
+function normalizeImageMimeType(mimeType) {
+    const normalized = (MIME_ALIASES[mimeType?.toLowerCase()] ?? mimeType?.toLowerCase()?.trim()) || 'image/jpeg';
+    return SUPPORTED_IMAGE_MIME_TYPES.includes(normalized) ? normalized : 'image/jpeg';
+}
+
 export class VoyageAIService {
 
     constructor({ apiUrl, apiKey, model, maxChunkChars, multimodalModel }) {
@@ -36,6 +55,12 @@ export class VoyageAIService {
 
         if (!response.ok) {
             const body = await response.text();
+            if (response.status === 429 && !(options?.retried)) {
+                const waitMs = 65_000;
+                logger.warn(COMPONENT, 'Rate limited (429), retrying after wait', { waitMs });
+                await new Promise((r) => setTimeout(r, waitMs));
+                return this.getEmbedding(input, { ...options, retried: true });
+            }
             logger.error(COMPONENT, 'API error', { status: response.status, body: body.slice(0, 200) });
             throw new Error(`VoyageAI error: ${response.status} - ${body}`);
         }
@@ -47,15 +72,21 @@ export class VoyageAIService {
 
     /**
      * Get embedding for a single image (buffer). Uses Voyage multimodal API with image_base64.
-     * @param {Buffer} imageBuffer - Raw image bytes
-     * @param {string} [mimeType] - e.g. "image/jpeg", "image/png"
+     * Supported image formats: image/jpeg, image/png, image/webp, image/gif. Other MIME types
+     * are normalized (e.g. image/jpg → image/jpeg) or defaulted to image/jpeg.
+     * @param {Buffer} imageBuffer - Raw image bytes (any supported format)
+     * @param {string} [mimeType] - MIME type: "image/jpeg" | "image/png" | "image/webp" | "image/gif" (alias image/jpg allowed)
      * @param {{ model?: string }} [options]
      * @returns {Promise<number[] | null>} Embedding vector or null on failure
      */
     async getImageEmbedding(imageBuffer, mimeType = 'image/jpeg', options = {}) {
         if (!imageBuffer || !Buffer.isBuffer(imageBuffer)) return null;
+        const normalizedMime = normalizeImageMimeType(mimeType);
+        if (normalizedMime !== mimeType?.toLowerCase?.()) {
+            logger.info(COMPONENT, 'Image MIME normalized', { from: mimeType, to: normalizedMime });
+        }
         const base64 = imageBuffer.toString('base64');
-        const dataUrl = `data:${mimeType};base64,${base64}`;
+        const dataUrl = `data:${normalizedMime};base64,${base64}`;
         const model = options.model ?? this.multimodalModel;
         logger.info(COMPONENT, 'Image embedding request', { size: imageBuffer.length, model });
         try {
@@ -73,6 +104,12 @@ export class VoyageAIService {
             });
             if (!response.ok) {
                 const body = await response.text();
+                if (response.status === 429 && !(options?.retried)) {
+                    const waitMs = 65_000;
+                    logger.warn(COMPONENT, 'Rate limited (429), retrying after wait', { waitMs });
+                    await new Promise((r) => setTimeout(r, waitMs));
+                    return this.getImageEmbedding(imageBuffer, mimeType, { ...options, retried: true });
+                }
                 logger.error(COMPONENT, 'Multimodal API error', { status: response.status, body: body.slice(0, 200) });
                 return null;
             }

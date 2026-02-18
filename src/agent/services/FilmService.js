@@ -4,22 +4,26 @@ import { logger } from '../utils/logger.js';
 const COMPONENT = 'service:film';
 
 /**
- * Service for films CRUD. Uses the same collection as RAG; creates/updates compute text embedding via VoyageAI.
+ * Service for films CRUD. Uses the same collection as RAG; creates/updates compute text and image embeddings via VoyageAI.
  * When coverImageBuffer is provided, uploads to S3 (via StoreService) and stores the returned URL in coverImage.
+ * Set FILM_GENERATE_EMBEDDINGS=0 or false to skip embedding generation (e.g. during seed).
  */
 export class FilmService {
 
     /**
      * @param {Object} options - configuration options
      * @param {import('mongodb').Collection} options.collection - MongoDB collection (same as RAG)
-     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [options.srvVoyage] - Optional; for create/update to embed description
+     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} [options.srvVoyage] - Optional; for create/update to embed description and image
      * @param {InstanceType<import('./StoreService.js').StoreService>} [options.srvStore] - Optional; for uploading cover image buffer to S3
+     * @param {boolean} [options.generateEmbeddings] - If false, skip embedding generation (overrides env). Default from FILM_GENERATE_EMBEDDINGS (true unless '0' or 'false')
      */
     constructor(options) {
-        const { collection, srvVoyage, srvStore } = options || {};
+        const { collection, srvVoyage, srvStore, embeddingsOn = 'true' } = options || {};
         this.collection = collection;
         this.srvVoyage = srvVoyage;
         this.srvStore = srvStore;
+        const envOff = embeddingsOn === '0' || String(embeddingsOn).toLowerCase() === 'false';
+        this.embeddingsOn = !envOff;
     }
 
     /** Projection for film responses (no embedding). */
@@ -43,26 +47,49 @@ export class FilmService {
     }
 
     /**
-     * Create a film: embed description, insert document with embedding.text (embedding.image empty).
-     * If coverImageBuffer is provided, uploads to S3 and stores URL in coverImage.
+     * Generate text and image embeddings via VoyageAI. Single place for all embedding logic.
+     * @param {{ description?: string, title?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string }} film
+     * @returns {Promise<{ text: number[], image: number[] }>}
+     */
+    async generateEmbeddings(film) {
+        const text = film.description ?? film.title ?? '';
+        const hasBuffer = Buffer.isBuffer(film.coverImageBuffer) && film.coverImageBuffer.length;
+        const mime = film.coverImageMimetype ?? 'image/jpeg';
+
+        if (!this.srvVoyage) {
+            return { text: [], image: [] };
+        }
+
+        const [textEmb, imageEmb] = await Promise.all([
+            text ? this.srvVoyage.getEmbedding([text]) : [[]],
+            hasBuffer && typeof this.srvVoyage.getImageEmbedding === 'function'
+                ? this.srvVoyage.getImageEmbedding(film.coverImageBuffer, mime)
+                : Promise.resolve(null),
+        ]);
+
+        return {
+            text: Array.isArray(textEmb) && textEmb[0]?.length ? textEmb[0] : [],
+            image: Array.isArray(imageEmb) ? imageEmb : [],
+        };
+    }
+
+    /**
+     * Create a film: resolve cover, generate embeddings (if enabled), insert.
      * @param {{ title: string, description: string, coverImage?: string, coverImageBuffer?: Buffer, coverImageMimetype?: string, coverImageOriginalname?: string, year?: number, genre?: string }} film
      * @returns {Promise<{ _id: import('mongodb').ObjectId, title: string, description: string, coverImage?: string, year?: number, genre?: string }>}
      */
     async create(film) {
         const { title, description, year, genre } = film;
         const coverImage = await this.resolveCoverImage(film);
-        const textToEmbed = [description ?? title ?? ''];
-        const textEmbeddings = this.srvVoyage
-            ? await this.srvVoyage.getEmbedding(textToEmbed)
-            : [[]];
+        const embedding = this.embeddingsOn
+            ? await this.generateEmbeddings(film)
+            : { text: [], image: [] };
+
         const doc = {
             title,
             description: description ?? '',
             coverImage,
-            embedding: {
-                text: textEmbeddings[0] ?? [],
-                image: [],
-            },
+            embedding: { text: embedding.text, image: embedding.image },
         };
         if (year !== undefined) doc.year = year;
         if (genre !== undefined) doc.genre = genre;
@@ -164,9 +191,20 @@ export class FilmService {
         if (film.year !== undefined) updateFields.year = film.year;
         if (film.genre !== undefined) updateFields.genre = film.genre;
 
-        if (film.description !== undefined && this.srvVoyage) {
-            const [embedding] = await this.srvVoyage.getEmbedding([film.description]);
-            updateFields['embedding.text'] = embedding ?? existing.embedding?.text ?? [];
+        const needsText = film.description !== undefined;
+        const needsImage = Buffer.isBuffer(film.coverImageBuffer) && film.coverImageBuffer.length;
+        if (this.embeddingsOn && this.srvVoyage && (needsText || needsImage)) {
+            const payload = {
+                description: film.description ?? existing.description,
+                title: existing.title,
+            };
+            if (needsImage) {
+                payload.coverImageBuffer = film.coverImageBuffer;
+                payload.coverImageMimetype = film.coverImageMimetype ?? 'image/jpeg';
+            }
+            const emb = await this.generateEmbeddings(payload);
+            updateFields['embedding.text'] = needsText ? (emb.text ?? existing.embedding?.text ?? []) : existing.embedding?.text ?? [];
+            updateFields['embedding.image'] = needsImage ? emb.image : (existing.embedding?.image ?? []);
         }
 
         if (Object.keys(updateFields).length === 0) return this.findById(id);

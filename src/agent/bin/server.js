@@ -25,6 +25,8 @@ const {
     STORE_BUCKET = 'films',
     STORE_ENDPOINT = 'http://127.0.0.1:9000',
     STORE_DRIVER = 'MinIO',
+    SEARCH_INDEX_NAME,
+    EMBEDDINGS_ON = 'false'
 } = process.env;
 
 const COMPONENT = 'server';
@@ -64,6 +66,7 @@ try {
             call: LLM_CALL === 'true',
             baseUrl: LLM_URL,
         }),
+        searchIndexName: SEARCH_INDEX_NAME || undefined,
     });
 
     const srvStore = STORE_BUCKET
@@ -74,14 +77,14 @@ try {
             driver: STORE_DRIVER,
         })
         : null;
-    const filmService = new FilmService({ collection, srvStore });
+    const filmService = new FilmService({ collection, srvStore, embeddingsOn: EMBEDDINGS_ON });
     const ragController = new RagController(ragService);
     const filmController = new FilmController(filmService);
 
     const app = express();
-    app.use(express.json());
+    app.use(express.json({ limit: '10mb' }));
 
-    app.use('/api/rag', ragController.router);
+    app.use('/api/films', ragController.router);
     app.use('/api/films', filmController.router);
 
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
@@ -91,7 +94,10 @@ try {
             url: `http://localhost:${PORT}`,
             health: '/api/health',
             ask: '/api/films/ask',
-            films: '/api/films'
+            askText: '/api/films/ask/text',
+            askImage: '/api/films/ask/image',
+            askHybrid: '/api/films/ask/hybrid',
+            films: '/api/films',
         });
     });
 } catch (err) {

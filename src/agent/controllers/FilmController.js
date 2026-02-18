@@ -1,39 +1,10 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { FilmService } from '../services/FilmService.js';
 import { logger } from '../utils/logger.js';
+import { multipart } from '../utils/utl.js';
 
 const COMPONENT = 'controller:film';
-
-/** Max cover image size (5MB). */
-const COVER_IMAGE_LIMIT = process.env.STORE_IMAGE_LIMIT ? parseInt(process.env.STORE_IMAGE_LIMIT, 10) : 5 * 1024 * 1024;
-
-/** Multer: accept one file from either "coverImage" or "image" to avoid LIMIT_UNEXPECTED_FILE when client uses a different field name. */
-const uploadCover = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: COVER_IMAGE_LIMIT },
-}).fields([
-    { name: 'coverImage', maxCount: 1 },
-    { name: 'image', maxCount: 1 },
-]);
-
-/**
- * Run multer only when request is multipart/form-data so JSON body is left to express.json().
- * @param {express.Request} req
- * @param {express.Response} res
- * @param {express.NextFunction} next
- */
-function multipart(req, res, next) {
-    if (req.is('multipart/form-data')) {
-        uploadCover(req, res, (err) => {
-            if (err) {
-                logger.warn(COMPONENT, 'Multipart parse failed', { error: err.message, code: err.code });
-                return res.status(400).json({ error: err.message });
-            }
-            next();
-        });
-    } else next();
-}
+const files = multipart({ component: COMPONENT });
 
 export class FilmController {
 
@@ -47,10 +18,10 @@ export class FilmController {
     }
 
     registerRoutes() {
-        this.router.post('/', multipart, this.create.bind(this));
+        this.router.post('/', files, this.create.bind(this));
         this.router.get('/', this.list.bind(this));
         this.router.get('/:id', this.getOne.bind(this));
-        this.router.put('/:id', multipart, this.update.bind(this));
+        this.router.put('/:id', files, this.update.bind(this));
         this.router.delete('/:id', this.delete.bind(this));
     }
 
@@ -185,7 +156,7 @@ export class FilmController {
     normalizeBody(req) {
         const body = req.body ?? {};
         const title = body.title != null ? String(body.title).trim() : undefined;
-        const description = body.description != null ? String(body.description).trim() : undefined;
+        const description = body.description != null ? String(body.description || body.text || body.des).trim() : undefined;
         let coverImage = body.coverImage != null ? String(body.coverImage).trim() : undefined;
         let year = body.year;
         if (typeof year === 'string') year = parseInt(year, 10);

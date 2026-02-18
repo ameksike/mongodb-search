@@ -1,62 +1,81 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { logger } from '../utils/logger.js';
 
 const COMPONENT = 'service:seed';
 
+function mimeFromPath(filePath) {
+    const ext = path.extname(filePath || '').toLowerCase();
+    if (ext === '.png') return 'image/png';
+    if (ext === '.webp') return 'image/webp';
+    if (ext === '.gif') return 'image/gif';
+    return 'image/jpeg';
+}
+
 /**
- * Service responsible for seeding the RAG collection: embed full document text via VoyageAI, insert into MongoDB.
- * One embedding per document (full text); one batch API call for all documents, one insertMany. No chunking.
+ * Seed service: creates RAG documents via FilmService.create (upload, embeddings, insert).
+ * FilmService handles text + image embeddings when generateEmbeddings is enabled.
  */
 export class SeedService {
 
     /**
-     * @param {import('mongodb').Collection} collection
-     * @param {InstanceType<import('./VoyageAIService.js').VoyageAIService>} srvVoyage
+     * @param {InstanceType<import('./FilmService.js').FilmService>} filmService
+     * @param {{ imagesBasePath?: string, embedImageDelayMs?: number }} [options]
      */
-    constructor(collection, srvVoyage) {
-        this.collection = collection;
-        this.srvVoyage = srvVoyage;
+    constructor(filmService, options = {}) {
+        this.filmService = filmService;
+        this.imagesBasePath = options.imagesBasePath ?? null;
+        this.embedImageDelayMs = options.embedImageDelayMs ?? 0;
+    }
+
+    /** Load image buffer from imagesBasePath + coverImage path. */
+    async loadImage(coverImagePath) {
+        if (!this.imagesBasePath || !coverImagePath) return null;
+        try {
+            return await fs.readFile(path.join(this.imagesBasePath, coverImagePath));
+        } catch (err) {
+            logger.warn(COMPONENT, 'Image file not found', { path: coverImagePath, error: err.message });
+            return null;
+        }
     }
 
     /**
-     * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ title: string, url: string, text: string, coverImage: string, year?: number, genre?: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
+     * Ingest documents: for each doc, build film payload and call filmService.create(film).
+     * @param {{ title: string, description?: string, text?: string, coverImage?: string, year?: number, genre?: string }[]} documents
      */
     async run(documents) {
-        try {
-            if (documents.length === 0) {
-                logger.info(COMPONENT, 'No documents to ingest');
-                return;
+        if (documents.length === 0) {
+            logger.info(COMPONENT, 'No documents to ingest');
+            return;
+        }
+
+        const getDescription = (d) => d.description ?? d.text ?? '';
+
+        for (let i = 0; i < documents.length; i++) {
+            if (this.embedImageDelayMs > 0 && i > 0) {
+                await new Promise((r) => setTimeout(r, this.embedImageDelayMs));
             }
-            logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
 
-            const [textEmbeddings, imageEmbeddings] = await Promise.all([
-                this.srvVoyage.getEmbedding(documents.map((d) => d.text)),
-                null
-            ]);
+            const doc = documents[i];
+            const coverImage = doc.coverImage ?? '';
+            const buffer = await this.loadImage(coverImage);
 
-            logger.info(COMPONENT, 'Text Embeddings received', { count: textEmbeddings?.length ?? 0 });
-            logger.info(COMPONENT, 'Image Embeddings received', { count: imageEmbeddings?.length ?? 0 });
+            const film = {
+                title: doc.title,
+                description: getDescription(doc),
+                year: doc.year,
+                genre: doc.genre,
+                coverImage,
+            };
+            if (buffer?.length) {
+                film.coverImageBuffer = buffer;
+                film.coverImageMimetype = mimeFromPath(coverImage);
+                film.coverImageOriginalname = path.basename(coverImage);
+            }
 
-            const docsToInsert = documents.map((doc, i) => {
-                const base = {
-                    title: doc.title,
-                    description: doc.text,
-                    coverImage: doc.coverImage ?? doc.url,
-                    embedding: {
-                        text: (textEmbeddings && textEmbeddings[i]) || [],
-                        image: (imageEmbeddings && imageEmbeddings[i]) || []
-                    },
-                };
-                if (doc.year !== undefined) base.year = doc.year;
-                if (doc.genre !== undefined) base.genre = doc.genre;
-                return base;
-            });
-
-            const res = await this.collection.insertMany(docsToInsert);
-            logger.info(COMPONENT, 'Ingest complete', { documents: documents.length, insertedIds: Object.values(res.insertedIds) });
+            await this.filmService.create(film);
         }
-        catch (err) {
-            logger.error(COMPONENT, 'Ingest failed', { error: err.message }); throw err;
-        }
+
+        logger.info(COMPONENT, 'Ingest complete', { inserted: documents.length });
     }
 }
