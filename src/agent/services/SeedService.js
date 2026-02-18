@@ -19,7 +19,7 @@ export class SeedService {
 
     /**
      * Ingest all documents in one batch: one getEmbedding(list of texts), one insertMany.
-     * @param {{ title: string, url: string, text: string, coverImage: string, year?: number, genre?: string, imageEmbedding?: number[] }[]} documents - imageEmbedding optional; if missing, text embedding is used for embedding.image
+     * @param {{ title: string, description?: string, text?: string, coverImage: string, year?: number, genre?: string, imageEmbedding?: number[] }[]} documents - description or text for embed; imageEmbedding optional
      */
     async run(documents) {
         try {
@@ -29,8 +29,9 @@ export class SeedService {
             }
             logger.info(COMPONENT, 'Embedding documents', { count: documents.length });
 
+            const textFromDoc = (d) => d.description ?? d.text ?? '';
             const [textEmbeddings, imageEmbeddings] = await Promise.all([
-                this.srvVoyage.getEmbedding(documents.map((d) => d.text)),
+                this.srvVoyage.getEmbedding(documents.map(textFromDoc)),
                 null
             ]);
 
@@ -40,7 +41,7 @@ export class SeedService {
             const docsToInsert = documents.map((doc, i) => {
                 const base = {
                     title: doc.title,
-                    description: doc.text,
+                    description: textFromDoc(doc),
                     coverImage: doc.coverImage ?? doc.url,
                     embedding: {
                         text: (textEmbeddings && textEmbeddings[i]) || [],

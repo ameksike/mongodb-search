@@ -185,7 +185,7 @@ export class FilmController {
     normalizeBody(req) {
         const body = req.body ?? {};
         const title = body.title != null ? String(body.title).trim() : undefined;
-        const description = body.description != null ? String(body.description).trim() : undefined;
+        const description = body.description != null ? String(body.description || body.text || body.des).trim() : undefined;
         let coverImage = body.coverImage != null ? String(body.coverImage).trim() : undefined;
         let year = body.year;
         if (typeof year === 'string') year = parseInt(year, 10);
