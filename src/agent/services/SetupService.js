@@ -31,6 +31,7 @@ export class SetupService {
         this.similarity = options.similarity ?? 'cosine';
         this.enableValidation = options.enableValidation ?? false;
         this.indexType = options.indexType ?? 'both';
+        this.clean = !!options.clean;
     }
 
     /**
@@ -100,7 +101,7 @@ export class SetupService {
         const collection = this.db.collection(this.collectionName);
         const existingIndexes = await this.listSearchIndexes(collection);
 
-        await this.cleanSearchIndexes(collection);
+        this.clean && await this.cleanSearchIndexes(collection);
 
         if (this.indexType === 'composed') {
             await this.createComposedIndex(collection, existingIndexes);

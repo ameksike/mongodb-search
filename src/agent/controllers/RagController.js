@@ -1,23 +1,10 @@
 import { Router } from 'express';
 import { RagService } from '../services/RagService.js';
 import { logger } from '../utils/logger.js';
+import { multipart, getImageFromRequest } from '../utils/utl.js';
 
 const COMPONENT = 'controller:rag';
-
-/** Parse data URL to buffer and mime type. Returns { buffer, mimeType } or null. */
-function parseDataUrl(dataUrl) {
-    if (!dataUrl || typeof dataUrl !== 'string') return null;
-    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) return null;
-    try {
-        const mimeType = match[1].trim().toLowerCase();
-        const base64 = match[2].replace(/\s/g, '');
-        const buffer = Buffer.from(base64, 'base64');
-        return buffer.length ? { buffer, mimeType } : null;
-    } catch {
-        return null;
-    }
-}
+const files = multipart({ component: COMPONENT });
 
 export class RagController {
     constructor(ragService) {
@@ -30,7 +17,7 @@ export class RagController {
     registerRoutes() {
         this.router.post('/ask', this.handleAskText.bind(this));
         this.router.post('/ask/text', this.handleAskText.bind(this));
-        this.router.post('/ask/image', this.handleAskImage.bind(this));
+        this.router.post('/ask/image', files, this.handleAskImage.bind(this));
         this.router.post('/ask/hybrid', this.handleAskHybrid.bind(this));
     }
 
@@ -64,15 +51,15 @@ export class RagController {
 
     async handleAskImage(req, res) {
         try {
-            const body = req.body ?? {};
-            const parsed = parseDataUrl(body.image);
+            const parsed = getImageFromRequest(req);
             if (!parsed) {
-                logger.warn(COMPONENT, 'Invalid request', { reason: 'Missing or invalid image (expect data URL in body.image)' });
+                logger.warn(COMPONENT, 'Invalid request', { reason: 'Missing or invalid image' });
                 return res.status(400).json({
-                    error: 'Missing or invalid "image" field. Send a data URL: { "image": "data:image/jpeg;base64,...", "question": "optional" }',
+                    error: 'Send an image via form-data (field "image", "file", or "coverImage") or JSON body: { "image": "data:image/jpeg;base64,...", "question": "optional" }',
                 });
             }
             this.applyCallFlag(req);
+            const body = req.body ?? {};
             const k = Math.min(20, Math.max(1, parseInt(req.query.k, 10) || 5));
             const question = typeof body.question === 'string' ? body.question.trim() : undefined;
             logger.info(COMPONENT, 'Ask image', { size: parsed.buffer.length, mimeType: parsed.mimeType });

@@ -4,6 +4,7 @@ import { logger } from '../utils/logger.js';
 import { multipart } from '../utils/utl.js';
 
 const COMPONENT = 'controller:film';
+const files = multipart({ component: COMPONENT });
 
 export class FilmController {
 
@@ -17,10 +18,10 @@ export class FilmController {
     }
 
     registerRoutes() {
-        this.router.post('/', multipart, this.create.bind(this));
+        this.router.post('/', files, this.create.bind(this));
         this.router.get('/', this.list.bind(this));
         this.router.get('/:id', this.getOne.bind(this));
-        this.router.put('/:id', multipart, this.update.bind(this));
+        this.router.put('/:id', files, this.update.bind(this));
         this.router.delete('/:id', this.delete.bind(this));
     }
 
