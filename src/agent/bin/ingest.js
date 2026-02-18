@@ -1,9 +1,14 @@
 import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { MongoClient } from 'mongodb';
 import { VoyageAIService } from '../services/VoyageAIService.js';
+import { StoreService } from '../services/StoreService.js';
 import { SeedService } from '../services/SeedService.js';
 import { films as seedDocuments } from '../data/films.js';
 import { logger } from '../utils/logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const {
     MONGODB_URI,
@@ -12,6 +17,7 @@ const {
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
+    STORE_BUCKET,
 } = process.env;
 
 if (!MONGODB_URI || !MONGODB_DB || !MONGODB_COLLECTION) {
@@ -27,6 +33,7 @@ const srvVoyage = new VoyageAIService({
     apiKey: VOYAGE_API_KEY,
     model: VOYAGE_MODEL,
 });
+const srvStore = STORE_BUCKET ? new StoreService() : null;
 
 const COMPONENT = 'ingest';
 async function main() {
@@ -34,7 +41,8 @@ async function main() {
         logger.info(COMPONENT, 'Connecting to MongoDB', { db: MONGODB_DB, collection: MONGODB_COLLECTION });
         await client.connect();
         const collection = client.db(MONGODB_DB).collection(MONGODB_COLLECTION);
-        const seedService = new SeedService(collection, srvVoyage);
+        const imagesBasePath = path.join(__dirname, '..', 'data');
+        const seedService = new SeedService(collection, srvVoyage, { imagesBasePath, srvStore });
         await seedService.run(seedDocuments);
     } finally {
         await client.close();
