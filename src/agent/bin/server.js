@@ -81,7 +81,7 @@ try {
     const app = express();
     app.use(express.json());
 
-    app.use('/api/rag', ragController.router);
+    app.use('/api/films', ragController.router);
     app.use('/api/films', filmController.router);
 
     app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
