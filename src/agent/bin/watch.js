@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { StoreService } from '../services/StoreService.js';
 import { VoyageAIService } from '../services/VoyageAIService.js';
+import { mimeFromUrl } from '../utils/utl.js';
 
 const {
     VOYAGE_API_URL,
@@ -27,16 +28,6 @@ const storeService = STORE_BUCKET
     })
     : null;
 
-/** Infer MIME type from URL path (e.g. .jpg -> image/jpeg). */
-function mimeFromUrl(url) {
-    if (!url || typeof url !== 'string') return 'image/jpeg';
-    const lower = url.split('?')[0].toLowerCase();
-    if (lower.endsWith('.png')) return 'image/png';
-    if (lower.endsWith('.webp')) return 'image/webp';
-    if (lower.endsWith('.gif')) return 'image/gif';
-    return 'image/jpeg';
-}
-
 /**
  * Trigger function to process new documents inserted into the MongoDB collection.
  * @param {*} change - The change event from MongoDB, containing details about the inserted document.
@@ -46,11 +37,11 @@ export async function insert(change, tools) {
     const { assistant, dbName, collectionName, collection } = tools;
     // Initialize an object to hold the new fields to be added to the document
     const updatedDoc = { embedding: {} };
+    const textContent = change?.fullDocument?.description || '';
 
     try {
-        if (!change?.fullDocument?.embedding?.text) {
+        if (!change?.fullDocument?.embedding?.text?.length) {
             // Generate text embedding if description field exists in the inserted document
-            const textContent = change?.fullDocument?.description || '';
             const textEmbedding = textContent && await srvVoyage.getEmbedding(textContent);
 
             // Log a warning if no text embedding was generated for a document that has a description field
@@ -75,7 +66,7 @@ export async function insert(change, tools) {
             });
         }
 
-        if (!change?.fullDocument?.embedding?.image) {
+        if (!change?.fullDocument?.embedding?.image?.length) {
             // If document has coverImage and we have store + multimodal, load image from store and get image embedding
             const coverImageUrl = change?.fullDocument?.coverImage;
             if (coverImageUrl && storeService) {
@@ -160,7 +151,10 @@ export async function insert(change, tools) {
                 database: dbName,
                 collection: collectionName,
                 documentKey: change.documentKey,
+                title: change?.fullDocument?.title
             },
         });
     }
 }
+
+export default function on(change, tools) { }
