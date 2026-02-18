@@ -17,6 +17,7 @@ const {
     VECTOR_DIMENSIONS_IMAGE,                     // Image embedding size (e.g. CLIP 512)
     VECTOR_SIMILARITY = 'cosine',                // 'cosine' | 'euclidean' | 'dotProduct'
     VECTOR_INDEX_TYPE = 'both',                  // 'image' | 'text' | 'composed' | 'both'
+    VECTOR_INDEX_CLEAN = 'false',                // 'image' | 'text' | 'composed' | 'both'
 } = process.env;
 
 const COMPONENT = 'setup';
@@ -40,6 +41,7 @@ try {
         similarity: VECTOR_SIMILARITY,
         enableValidation: MONGODB_VECTOR_VALIDATION.toLowerCase() === 'true',
         indexType: VECTOR_INDEX_TYPE,
+        clean: VECTOR_INDEX_CLEAN !== 'false'
     });
     logger.info(COMPONENT, 'Running setup', { vectorIndexName: VECTOR_INDEX_NAME, dimensionsText: setupService.dimensionsText, dimensionsImage: setupService.dimensionsImage });
     await setupService.run();
