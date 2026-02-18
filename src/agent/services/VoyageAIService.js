@@ -55,6 +55,12 @@ export class VoyageAIService {
 
         if (!response.ok) {
             const body = await response.text();
+            if (response.status === 429 && !(options?.retried)) {
+                const waitMs = 65_000;
+                logger.warn(COMPONENT, 'Rate limited (429), retrying after wait', { waitMs });
+                await new Promise((r) => setTimeout(r, waitMs));
+                return this.getEmbedding(input, { ...options, retried: true });
+            }
             logger.error(COMPONENT, 'API error', { status: response.status, body: body.slice(0, 200) });
             throw new Error(`VoyageAI error: ${response.status} - ${body}`);
         }
@@ -98,6 +104,12 @@ export class VoyageAIService {
             });
             if (!response.ok) {
                 const body = await response.text();
+                if (response.status === 429 && !(options?.retried)) {
+                    const waitMs = 65_000;
+                    logger.warn(COMPONENT, 'Rate limited (429), retrying after wait', { waitMs });
+                    await new Promise((r) => setTimeout(r, waitMs));
+                    return this.getImageEmbedding(imageBuffer, mimeType, { ...options, retried: true });
+                }
                 logger.error(COMPONENT, 'Multimodal API error', { status: response.status, body: body.slice(0, 200) });
                 return null;
             }
