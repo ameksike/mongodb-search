@@ -265,7 +265,39 @@ docker exec -it agent-watch sh
 
 After starting **agent-web**, the API is at `http://localhost:3000` (or the host port you set with `PORT`). Run **agent:setup** and **agent:seed** once (e.g. from the host with `npm run agent:setup` and `npm run agent:seed` using the same `.env` and `MONGODB_URI` pointing to `localhost:27017` if mongo is in Docker).
 
+## OLLana
+```
+GET http://127.0.0.1:11434/api/tags
+```
+```json
+{
+  "models": [
+    {
+      "name": "phi3:mini",
+      "model": "phi3:mini",
+      "modified_at": "2026-02-20T09:39:45.1876434Z",
+      "size": 2176178913,
+      "digest": "4f222292793889a9a40a020799cfd28d53f3e01af25d48e06c5e708610fc47e9",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "phi3",
+        "families": [
+          "phi3"
+        ],
+        "parameter_size": "3.8B",
+        "quantization_level": "Q4_0"
+      }
+    }
+  ]
+}
+```
 ---
+
+## MinIO
+```
+GET http://127.0.0.1:9001/login
+```
 
 ## 🔗 References
 
