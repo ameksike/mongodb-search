@@ -20,7 +20,7 @@ const {
     VOYAGE_MODEL,
     STORE_BUCKET,
     VOYAGE_IMAGE_EMBED_DELAY_MS,
-    EMBEDDINGS_ON = 'false'
+    RAG_EMBEDDINGS_ON = 'false'
 } = process.env;
 
 /** Delay (ms) between image embedding API calls. Voyage free tier ≈ 3 RPM → min 20_000 ms (60s ÷ 3). Default 21s for margin. */
@@ -47,7 +47,7 @@ async function main() {
         logger.info(COMPONENT, 'Connecting to MongoDB', { db: MONGODB_DB, collection: MONGODB_COLLECTION });
         await client.connect();
         const collection = client.db(MONGODB_DB).collection(MONGODB_COLLECTION);
-        const filmService = new FilmService({ collection, srvVoyage, srvStore, embeddingsOn: EMBEDDINGS_ON });
+        const filmService = new FilmService({ collection, srvVoyage, srvStore, embeddingsOn: RAG_EMBEDDINGS_ON });
         const imagesBasePath = path.join(__dirname, '..', 'data');
         const seedService = new SeedService(filmService, { imagesBasePath, embedImageDelayMs });
         await seedService.run(seedDocuments);

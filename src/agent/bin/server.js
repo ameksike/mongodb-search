@@ -17,6 +17,7 @@ const {
     VOYAGE_API_URL,
     VOYAGE_API_KEY,
     VOYAGE_MODEL,
+    VOYAGE_MODEL_RERANK,
     LLM_MODEL,
     LLM_CALL,
     LLM_URL,
@@ -26,7 +27,8 @@ const {
     STORE_ENDPOINT = 'http://127.0.0.1:9000',
     STORE_DRIVER = 'MinIO',
     SEARCH_INDEX_NAME,
-    EMBEDDINGS_ON = 'false'
+    RAG_RERANK_ON = 'false',
+    RAG_EMBEDDINGS_ON = 'false'
 } = process.env;
 
 const COMPONENT = 'server';
@@ -52,6 +54,7 @@ try {
         apiUrl: VOYAGE_API_URL,
         apiKey: VOYAGE_API_KEY,
         model: VOYAGE_MODEL,
+        rerankModel: VOYAGE_MODEL_RERANK,
     });
 
     const db = mongoClient.db(MONGODB_DB);
@@ -67,6 +70,7 @@ try {
             baseUrl: LLM_URL,
         }),
         searchIndexName: SEARCH_INDEX_NAME || undefined,
+        useRerank: RAG_RERANK_ON === 'true' || RAG_RERANK_ON === '1',
     });
 
     const srvStore = STORE_BUCKET
@@ -77,7 +81,7 @@ try {
             driver: STORE_DRIVER,
         })
         : null;
-    const filmService = new FilmService({ collection, srvStore, embeddingsOn: EMBEDDINGS_ON });
+    const filmService = new FilmService({ collection, srvStore, embeddingsOn: RAG_EMBEDDINGS_ON });
     const ragController = new RagController(ragService);
     const filmController = new FilmController(filmService);
 

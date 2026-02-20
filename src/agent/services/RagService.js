@@ -9,13 +9,14 @@ export class RagService {
 
     /**
      * @param {{ 
-     *      db: import('mongodb').Db, - MongoDB database instance
-     *      collectionName: string, - name of the collection with docs and embeddings
-     *      srvVoyage: import('../services/VoyageAIService.js').VoyageAIService, - for embeddings
-     *      srvLLM: any, - for LLM calls; must have .invoke(question, chunks) method. Can be OllamaService or similar.
-     *      vectorIndexName?: string, - prefix for vector search indexes (default: 'rag_vector', resulting in 'rag_vector_text_index' and 'rag_vector_image_index')
-     *      searchIndexName?: string - Atlas Search index name for full-text search (optional; if not provided, askHybrid will fall back to vector-only)
-     * }} options - searchIndexName: Atlas Search index for full-text (hybrid); optional
+     *      db: import('mongodb').Db,
+     *      collectionName: string,
+     *      srvVoyage: import('../services/VoyageAIService.js').VoyageAIService,
+     *      srvLLM: any,
+     *      vectorIndexName?: string,
+     *      searchIndexName?: string,
+     *      useRerank?: boolean - if true, rerank retrieved chunks with Voyage reranker before LLM (default from RAG_RERANK_ON env)
+     * }} options
      */
     constructor(options) {
         this.collection = options?.db.collection(options.collectionName);
@@ -23,6 +24,8 @@ export class RagService {
         this.srvLLM = options?.srvLLM;
         this.indexName = options?.vectorIndexName ?? 'rag_vector';
         this.searchIndexName = options?.searchIndexName ?? null;
+        const envRerank = process.env.RAG_RERANK_ON;
+        this.useRerank = options?.useRerank ?? (envRerank === 'true' || envRerank === '1');
     }
 
     /**
@@ -99,6 +102,23 @@ export class RagService {
     }
 
     /**
+     * Optionally rerank chunks by query with Voyage reranker. Returns chunks in same shape with updated scores and order.
+     * @param {string} query
+     * @param {{ _id: any, title: string, description: string, coverImage: string, score: number }[]} chunks
+     * @param {number} k - top_k for reranker
+     * @returns {Promise<{ _id: any, title: string, description: string, coverImage: string, score: number }[]>}
+     */
+    async applyRerank(query, chunks, k) {
+        if (!this.useRerank || chunks.length === 0 || typeof this.srvVoyage?.rerank !== 'function') {
+            return chunks;
+        }
+        const documents = chunks.map((c) => [c.title, c.description].filter(Boolean).join(' ').trim() || ' ');
+        const results = await this.srvVoyage.rerank(query, documents, { top_k: Math.min(k, chunks.length) });
+        if (results.length === 0) return chunks;
+        return results.map((r) => ({ ...chunks[r.index], score: r.relevance_score }));
+    }
+
+    /**
      * Merge two result lists with Reciprocal Rank Fusion. Dedupes by _id, sorts by RRF score.
      * @param {{ _id: any }[]} listA
      * @param {{ _id: any }[]} listB
@@ -151,7 +171,8 @@ export class RagService {
     async askText(question, options = {}) {
         const k = options.k ?? 5;
         const embedding = await this.srvVoyage.getEmbedding(question);
-        const chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
+        let chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
+        chunks = await this.applyRerank(question, chunks, k);
         return this.answerWithChunks(question, chunks);
     }
 
@@ -168,7 +189,8 @@ export class RagService {
         if (!embedding?.length) {
             return { answer: 'Could not generate an embedding from the image.', contextChunks: [] };
         }
-        const chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'image' });
+        let chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'image' });
+        chunks = await this.applyRerank(question, chunks, k);
         return this.answerWithChunks(question, chunks);
     }
 
@@ -184,9 +206,10 @@ export class RagService {
             this.retrieveByFullText(question, { k }),
         ]);
         const vectorDocs = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
-        const chunks = fullTextDocs.length
+        let chunks = fullTextDocs.length
             ? this.mergeWithRRF(vectorDocs, fullTextDocs).slice(0, k)
             : vectorDocs;
+        chunks = await this.applyRerank(question, chunks, k);
         return this.answerWithChunks(question, chunks);
     }
 
