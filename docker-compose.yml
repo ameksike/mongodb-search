@@ -1,19 +1,19 @@
 services:
   # MongoDB for RAG/films collection and change streams (used by agent-web and agent-watch).
-  mongo:
-    image: mongo:7
-    container_name: mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./tmp/mongo:/data/db
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+  # mongo:
+  #   image: mongo:7
+  #   container_name: mongo
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - ./tmp/mongo:/data/db
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 5s
 
   ollama:
     image: ollama/ollama:latest

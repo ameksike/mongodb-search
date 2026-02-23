@@ -23,13 +23,16 @@ function normalizeImageMimeType(mimeType) {
 
 export class VoyageAIService {
 
-    constructor({ apiUrl, apiKey, model, maxChunkChars, multimodalModel }) {
+    constructor({ apiUrl, apiKey, model, maxChunkChars, multimodalModel, rerankModel, rerankPath = '/rerank' }) {
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
         this.model = model;
         this.maxChunkChars = maxChunkChars ?? 800;
         this.multimodalModel = multimodalModel ?? 'voyage-multimodal-3';
-        this.multimodalUrl = (apiUrl || '').replace(/\/embeddings\/?$/, '') + '/multimodalembeddings';
+        this.rerankModel = rerankModel ?? process.env.VOYAGE_RERANK_MODEL ?? 'rerank-2.5-lite';
+        const baseUrl = (apiUrl || '').replace(/\/embeddings\/?$/, '').replace(/\/$/, '');
+        this.multimodalUrl = baseUrl + '/multimodalembeddings';
+        this.rerankUrl = baseUrl + rerankPath;
     }
 
     /**
@@ -120,6 +123,39 @@ export class VoyageAIService {
             logger.error(COMPONENT, 'Image embedding failed', { error: err.message });
             return null;
         }
+    }
+
+    /**
+     * Rerank documents by relevance to the query. Uses Voyage rerank API (cross-encoder).
+     * @param {string} query - search query
+     * @param {string[]} documents - list of document strings to rerank (max 1000)
+     * @param {{ top_k?: number, model?: string }} [options]
+     * @returns {Promise<{ index: number, relevance_score: number }[]>} results sorted by relevance (desc)
+     */
+    async rerank(query, documents, options = {}) {
+        if (!query?.trim() || !Array.isArray(documents) || documents.length === 0) {
+            return [];
+        }
+        const topK = options.top_k ?? documents.length;
+        const model = options.model ?? this.rerankModel;
+        const body = { query: query.trim(), documents, model, top_k: Math.min(topK, documents.length) };
+        logger.info(COMPONENT, 'Rerank request', { queryLen: query.length, docCount: documents.length, top_k: body.top_k, model });
+        const response = await fetch(this.rerankUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            logger.error(COMPONENT, 'Rerank API error', { status: response.status, body: text.slice(0, 200) });
+            return [];
+        }
+        const result = await response.json();
+        const data = result.data ?? [];
+        return data.map((r) => ({ index: r.index, relevance_score: r.relevance_score ?? 0 }));
     }
 
     /**

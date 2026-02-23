@@ -8,14 +8,18 @@ const RRF_K = 60;
 export class RagService {
 
     /**
-     * @param {{ 
-     *      db: import('mongodb').Db, - MongoDB database instance
-     *      collectionName: string, - name of the collection with docs and embeddings
-     *      srvVoyage: import('../services/VoyageAIService.js').VoyageAIService, - for embeddings
-     *      srvLLM: any, - for LLM calls; must have .invoke(question, chunks) method. Can be OllamaService or similar.
-     *      vectorIndexName?: string, - prefix for vector search indexes (default: 'rag_vector', resulting in 'rag_vector_text_index' and 'rag_vector_image_index')
-     *      searchIndexName?: string - Atlas Search index name for full-text search (optional; if not provided, askHybrid will fall back to vector-only)
-     * }} options - searchIndexName: Atlas Search index for full-text (hybrid); optional
+     * @param {{
+     *      db: import('mongodb').Db,
+     *      collectionName: string,
+     *      srvVoyage: import('../services/VoyageAIService.js').VoyageAIService,
+     *      srvLLM: any,
+     *      vectorIndexName?: string,
+     *      searchIndexName?: string,
+     *      useRerank?: boolean,
+     *      srvJinaRerank?: import('../services/JinaRerankService.js').JinaRerankService,
+     *      srvStore?: import('../services/StoreService.js').StoreService,
+     *      useRerankImage?: boolean,
+     * }} options
      */
     constructor(options) {
         this.collection = options?.db.collection(options.collectionName);
@@ -23,6 +27,12 @@ export class RagService {
         this.srvLLM = options?.srvLLM;
         this.indexName = options?.vectorIndexName ?? 'rag_vector';
         this.searchIndexName = options?.searchIndexName ?? null;
+        const envRerank = process.env.RAG_RERANK_ON;
+        this.useRerank = options?.useRerank ?? (envRerank === 'true' || envRerank === '1');
+        this.srvJinaRerank = options?.srvJinaRerank ?? null;
+        this.srvStore = options?.srvStore ?? null;
+        const envRerankImage = process.env.RAG_RERANK_IMAGE_ON;
+        this.useRerankImage = options?.useRerankImage ?? (envRerankImage === 'true' || envRerankImage === '1');
     }
 
     /**
@@ -99,6 +109,92 @@ export class RagService {
     }
 
     /**
+     * Rerank chunks using the appropriate strategy per query type.
+     * - text/hybrid: Voyage text cross-encoder.
+     * - image + Jina configured + useRerankImage: Jina multimodal reranker (sends cover images).
+     * - image fallback: Voyage if user provided a question, otherwise skip.
+     * @param {string} query
+     * @param {{ _id: any, title: string, description: string, coverImage: string, score: number }[]} chunks
+     * @param {number} k - top_k / top_n for reranker
+     * @param {{ queryType?: 'text'|'image'|'hybrid', hasUserQuestion?: boolean }} [options]
+     * @returns {Promise<{ _id: any, title: string, description: string, coverImage: string, score: number }[]>}
+     */
+    async applyRerank(query, chunks, k, options = {}) {
+        const { queryType = 'text', hasUserQuestion = false } = options;
+        if (chunks.length === 0) return chunks;
+
+        // Image query: try Jina multimodal rerank ---
+        if (queryType === 'image') {
+            if (this.useRerankImage && typeof this.srvJinaRerank?.rerank === 'function') {
+                return this.rerankImageWithJina(query, chunks, k);
+            }
+            // Fallback: Voyage text rerank only when user provided an explicit question
+            if (hasUserQuestion && this.useRerank && typeof this.srvVoyage?.rerank === 'function') {
+                logger.info(COMPONENT, 'Image rerank fallback to Voyage (user question provided)');
+                return this.rerankTextWithVoyage(query, chunks, k);
+            }
+            logger.info(COMPONENT, 'Rerank skipped for image query', { jina: !!this.srvJinaRerank, useRerankImage: this.useRerankImage, hasUserQuestion });
+            return chunks;
+        }
+
+        // Text / Hybrid: Voyage text rerank ---
+        if (!this.useRerank || typeof this.srvVoyage?.rerank !== 'function') return chunks;
+        return this.rerankTextWithVoyage(query, chunks, k);
+    }
+
+    /**
+     * Voyage text cross-encoder rerank (title + description).
+     * @private
+     */
+    async rerankTextWithVoyage(query, chunks, k) {
+        const documents = chunks.map((c) => [c.title, c.description].filter(Boolean).join(' ').trim() || ' ');
+        const results = await this.srvVoyage.rerank(query, documents, { top_k: Math.min(k, chunks.length) });
+        if (results.length === 0) return chunks;
+        return results.map((r) => ({ ...chunks[r.index], score: r.relevance_score }));
+    }
+
+    /**
+     * Jina multimodal rerank: fetches cover images from store and sends them as base64 documents.
+     * Falls back to text per-document when an image cannot be fetched.
+     * @private
+     */
+    async rerankImageWithJina(query, chunks, k) {
+        const documents = await Promise.all(
+            chunks.map(async (c) => {
+                if (c.coverImage && this.srvStore) {
+                    try {
+                        const buffer = await this.srvStore.readFromUrl(c.coverImage);
+                        if (buffer?.length) {
+                            const mime = this.mimeFromUrl(c.coverImage);
+                            return { image: `data:${mime};base64,${buffer.toString('base64')}` };
+                        }
+                    } catch (err) {
+                        logger.warn(COMPONENT, 'Image fetch failed, falling back to text', { coverImage: c.coverImage, error: err.message });
+                    }
+                }
+                return { text: [c.title, c.description].filter(Boolean).join(' ').trim() || ' ' };
+            }),
+        );
+
+        const imageCount = documents.filter((d) => d.image).length;
+        logger.info(COMPONENT, 'Jina multimodal rerank', { docCount: documents.length, imageCount, textFallback: documents.length - imageCount });
+
+        const results = await this.srvJinaRerank.rerank(query, documents, { top_n: Math.min(k, chunks.length) });
+        if (results.length === 0) return chunks;
+        return results.map((r) => ({ ...chunks[r.index], score: r.relevance_score }));
+    }
+
+    /**
+     * Derive MIME type from a URL/path by extension. Defaults to image/jpeg.
+     * @private
+     */
+    mimeFromUrl(url) {
+        const ext = (url || '').split('.').pop()?.toLowerCase();
+        const map = { png: 'image/png', webp: 'image/webp', gif: 'image/gif', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
+        return map[ext] ?? 'image/jpeg';
+    }
+
+    /**
      * Merge two result lists with Reciprocal Rank Fusion. Dedupes by _id, sorts by RRF score.
      * @param {{ _id: any }[]} listA
      * @param {{ _id: any }[]} listB
@@ -151,7 +247,8 @@ export class RagService {
     async askText(question, options = {}) {
         const k = options.k ?? 5;
         const embedding = await this.srvVoyage.getEmbedding(question);
-        const chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
+        let chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
+        chunks = await this.applyRerank(question, chunks, k, { queryType: 'text' });
         return this.answerWithChunks(question, chunks);
     }
 
@@ -163,12 +260,14 @@ export class RagService {
      */
     async askImage(imageBuffer, mimeType, options = {}) {
         const k = options.k ?? 5;
+        const hasUserQuestion = Boolean(options.question?.trim());
         const question = options.question ?? 'What films are relevant to this image?';
         const embedding = await this.srvVoyage.getImageEmbedding(imageBuffer, mimeType);
         if (!embedding?.length) {
             return { answer: 'Could not generate an embedding from the image.', contextChunks: [] };
         }
-        const chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'image' });
+        let chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'image' });
+        chunks = await this.applyRerank(question, chunks, k, { queryType: 'image', hasUserQuestion });
         return this.answerWithChunks(question, chunks);
     }
 
@@ -184,9 +283,10 @@ export class RagService {
             this.retrieveByFullText(question, { k }),
         ]);
         const vectorDocs = await this.retrieveRelevantChunks({ embedding, k, type: 'text' });
-        const chunks = fullTextDocs.length
+        let chunks = fullTextDocs.length
             ? this.mergeWithRRF(vectorDocs, fullTextDocs).slice(0, k)
             : vectorDocs;
+        chunks = await this.applyRerank(question, chunks, k, { queryType: 'text' });
         return this.answerWithChunks(question, chunks);
     }
 
