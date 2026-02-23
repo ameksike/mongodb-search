@@ -8,6 +8,7 @@ import { RagController } from '../controllers/RagController.js';
 import { FilmController } from '../controllers/FilmController.js';
 import { FilmService } from '../services/FilmService.js';
 import { StoreService } from '../services/StoreService.js';
+import { JinaRerankService } from '../services/JinaRerankService.js';
 import { logger } from '../utils/logger.js';
 
 const {
@@ -28,7 +29,11 @@ const {
     STORE_DRIVER = 'MinIO',
     SEARCH_INDEX_NAME,
     RAG_RERANK_ON = 'false',
-    RAG_EMBEDDINGS_ON = 'false'
+    RAG_RERANK_IMAGE_ON = 'false',
+    RAG_EMBEDDINGS_ON = 'false',
+    JINA_API_KEY,
+    JINA_API_URL,
+    JINA_RERANK_MODEL,
 } = process.env;
 
 const COMPONENT = 'server';
@@ -60,6 +65,19 @@ try {
     const db = mongoClient.db(MONGODB_DB);
     const collection = db.collection(MONGODB_COLLECTION);
 
+    const srvStore = STORE_BUCKET
+        ? new StoreService({
+            bucket: STORE_BUCKET,
+            region: AWS_REGION,
+            endpoint: STORE_ENDPOINT,
+            driver: STORE_DRIVER,
+        })
+        : null;
+
+    const srvJinaRerank = JINA_API_KEY
+        ? new JinaRerankService({ apiUrl: JINA_API_URL, apiKey: JINA_API_KEY, model: JINA_RERANK_MODEL })
+        : null;
+
     const ragService = new RagService({
         db,
         srvVoyage,
@@ -71,16 +89,10 @@ try {
         }),
         searchIndexName: SEARCH_INDEX_NAME || undefined,
         useRerank: RAG_RERANK_ON === 'true' || RAG_RERANK_ON === '1',
+        srvJinaRerank,
+        srvStore,
+        useRerankImage: RAG_RERANK_IMAGE_ON === 'true' || RAG_RERANK_IMAGE_ON === '1',
     });
-
-    const srvStore = STORE_BUCKET
-        ? new StoreService({
-            bucket: STORE_BUCKET,
-            region: AWS_REGION,
-            endpoint: STORE_ENDPOINT,
-            driver: STORE_DRIVER,
-        })
-        : null;
     const filmService = new FilmService({ collection, srvStore, embeddingsOn: RAG_EMBEDDINGS_ON });
     const ragController = new RagController(ragService);
     const filmController = new FilmController(filmService);
