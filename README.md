@@ -314,7 +314,7 @@ GET http://127.0.0.1:9001/login
         - [Atlas Hybrid Search Tester GitHub](https://github.com/JohnGUnderwood/atlas-hybrid-search)
         - [How to Index Fields for Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-type/?deployment-type=atlas&embedding=byo&interface=driver&language=python#how-to-index-fields-for-vector-search)
         - [Manage MongoDB Search Indexes](https://www.mongodb.com/docs/atlas/atlas-search/manage-indexes/?deployment-type=atlas&interface=driver&language=python)
-
+  - [Install the MongoDB Controllers for Kubernetes Operator](https://www.mongodb.com/docs/kubernetes/current/tutorial/install-k8s-operator/)
 ### Tools
 - LangChain
     - [LangChain Quickstart](https://docs.langchain.com/oss/javascript/langchain/quickstart)
