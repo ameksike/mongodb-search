@@ -116,30 +116,44 @@ export class RagService {
      * @param {string} query
      * @param {{ _id: any, title: string, description: string, coverImage: string, score: number }[]} chunks
      * @param {number} k - top_k / top_n for reranker
-     * @param {{ queryType?: 'text'|'image'|'hybrid', hasUserQuestion?: boolean }} [options]
+     * @param {{ queryType?: 'text'|'image'|'hybrid' }} [options]
      * @returns {Promise<{ _id: any, title: string, description: string, coverImage: string, score: number }[]>}
      */
     async applyRerank(query, chunks, k, options = {}) {
-        const { queryType = 'text', hasUserQuestion = false } = options;
-        if (chunks.length === 0) return chunks;
+        const { type = 'text' } = options;
 
-        // Image query: try Jina multimodal rerank ---
-        if (queryType === 'image') {
-            if (this.useRerankImage && typeof this.srvJinaRerank?.rerank === 'function') {
-                return this.rerankImageWithJina(query, chunks, k);
-            }
-            // Fallback: Voyage text rerank only when user provided an explicit question
-            if (hasUserQuestion && this.useRerank && typeof this.srvVoyage?.rerank === 'function') {
-                logger.info(COMPONENT, 'Image rerank fallback to Voyage (user question provided)');
-                return this.rerankTextWithVoyage(query, chunks, k);
-            }
-            logger.info(COMPONENT, 'Rerank skipped for image query', { jina: !!this.srvJinaRerank, useRerankImage: this.useRerankImage, hasUserQuestion });
+        if (chunks.length === 0) {
+            logger.info(COMPONENT, 'Rerank skipped: no chunks to rerank');
             return chunks;
         }
 
-        // Text / Hybrid: Voyage text rerank ---
-        if (!this.useRerank || typeof this.srvVoyage?.rerank !== 'function') return chunks;
-        return this.rerankTextWithVoyage(query, chunks, k);
+        switch (type) {
+            case 'text':
+            case 'hybrid':
+                // Text / Hybrid: Voyage text rerank ---
+                if (!this.useRerank || typeof this.srvVoyage?.rerank !== 'function') {
+                    logger.info(COMPONENT, 'Rerank skipped for text query', { useRerank: this.useRerank, hasVoyageRerank: typeof this.srvVoyage?.rerank === 'function' });
+                    return chunks;
+                }
+                return this.rerankTextWithVoyage(query, chunks, k);
+
+            case 'image':
+                // Image query: try Jina multimodal rerank ---
+                if (this.useRerankImage && typeof this.srvJinaRerank?.rerank === 'function') {
+                    return this.rerankImageWithJina(query, chunks, k);
+                }
+                // Fallback: Voyage text rerank only when user provided an explicit question
+                if (query?.length && this.useRerank && typeof this.srvVoyage?.rerank === 'function') {
+                    logger.info(COMPONENT, 'Image rerank fallback to Voyage (user question provided)');
+                    return this.rerankTextWithVoyage(query, chunks, k);
+                }
+                logger.info(COMPONENT, 'Rerank skipped for image query', { jina: !!this.srvJinaRerank, useRerankImage: this.useRerankImage });
+                return chunks;
+
+            default:
+                logger.warn(COMPONENT, 'Unknown query type for rerank', { type });
+                return chunks;
+        }
     }
 
     /**
@@ -260,14 +274,13 @@ export class RagService {
      */
     async askImage(imageBuffer, mimeType, options = {}) {
         const k = options.k ?? 5;
-        const hasUserQuestion = Boolean(options.question?.trim());
-        const question = options.question ?? 'What films are relevant to this image?';
+        const question = options.question?.trim() || '';
         const embedding = await this.srvVoyage.getImageEmbedding(imageBuffer, mimeType);
         if (!embedding?.length) {
             return { answer: 'Could not generate an embedding from the image.', contextChunks: [] };
         }
         let chunks = await this.retrieveRelevantChunks({ embedding, k, type: 'image' });
-        chunks = await this.applyRerank(question, chunks, k, { queryType: 'image', hasUserQuestion });
+        chunks = await this.applyRerank(question, chunks, k, { type: 'image' });
         return this.answerWithChunks(question, chunks);
     }
 
