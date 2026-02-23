@@ -28,7 +28,7 @@ const {
     STORE_ENDPOINT = 'http://127.0.0.1:9000',
     STORE_DRIVER = 'MinIO',
     SEARCH_INDEX_NAME,
-    RAG_RERANK_ON = 'false',
+    RAG_RERANK_TEXT_ON = 'false',
     RAG_RERANK_IMAGE_ON = 'false',
     RAG_EMBEDDINGS_ON = 'false',
     JINA_API_KEY,
@@ -88,10 +88,10 @@ try {
             baseUrl: LLM_URL,
         }),
         searchIndexName: SEARCH_INDEX_NAME || undefined,
-        useRerank: RAG_RERANK_ON === 'true' || RAG_RERANK_ON === '1',
+        useRerank: RAG_RERANK_TEXT_ON === 'true' || RAG_RERANK_TEXT_ON === '1',
+        useRerankImage: RAG_RERANK_IMAGE_ON === 'true' || RAG_RERANK_IMAGE_ON === '1',
         srvJinaRerank,
         srvStore,
-        useRerankImage: RAG_RERANK_IMAGE_ON === 'true' || RAG_RERANK_IMAGE_ON === '1',
     });
     const filmService = new FilmService({ collection, srvStore, embeddingsOn: RAG_EMBEDDINGS_ON });
     const ragController = new RagController(ragService);
