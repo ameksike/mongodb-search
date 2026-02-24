@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  strategy:
+    type: Recreate          # single writer on the PVC
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          volumeMounts:
+            - name: data
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+              # Uncomment for GPU support:
+              # nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 11434
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ollama-data
+---
+# Init Job: pull the default model after Ollama is running.
+# Run once:  kubectl apply -f ollama.yaml && kubectl apply -f ollama-pull-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-pull-model
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pull
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Ollama to be ready..."
+              until curl -sf http://ollama.mongodb-search.svc.cluster.local:11434/; do
+                sleep 5
+              done
+              echo "Pulling phi3:mini model..."
+              curl -X POST http://ollama.mongodb-search.svc.cluster.local:11434/api/pull \
+                -H 'Content-Type: application/json' \
+                -d '{"name":"phi3:mini"}'
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434

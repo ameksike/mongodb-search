@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agent-web
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: agent-web
+    app.kubernetes.io/part-of: mongodb-search
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mongodb-search.local      # replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agent-web
+                port:
+                  number: 80

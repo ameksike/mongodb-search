@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-web
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: agent-web
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: agent-web
+    spec:
+      containers:
+        - name: agent-web
+          image: mongodb-search:latest    # replace with your registry image
+          imagePullPolicy: IfNotPresent
+          command: ["npm", "run", "agent:start"]
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: mongodb-search-config
+            - secretRef:
+                name: mongodb-search-secrets
+          env:
+            - name: PORT
+              value: "3000"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-web
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: agent-web
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  selector:
+    app: agent-web
+  ports:
+    - port: 80
+      targetPort: 3000

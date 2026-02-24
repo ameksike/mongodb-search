@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mongodb-search
+  labels:
+    app.kubernetes.io/part-of: mongodb-search
