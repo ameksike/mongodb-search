@@ -302,7 +302,6 @@ GET http://127.0.0.1:9001/login
 ## 🔗 References
 
 ### MongoDB search
-
 - [What is MongoDB Search?](https://www.mongodb.com/docs/atlas/atlas-search/)
     - [Full-Text Search](https://www.mongodb.com/resources/basics/full-text-search)
     - [Hybrid Search](https://www.mongodb.com/docs/atlas/atlas-search/tutorial/hybrid-search/)
@@ -314,6 +313,13 @@ GET http://127.0.0.1:9001/login
         - [Atlas Hybrid Search Tester GitHub](https://github.com/JohnGUnderwood/atlas-hybrid-search)
         - [How to Index Fields for Vector Search](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-type/?deployment-type=atlas&embedding=byo&interface=driver&language=python#how-to-index-fields-for-vector-search)
         - [Manage MongoDB Search Indexes](https://www.mongodb.com/docs/atlas/atlas-search/manage-indexes/?deployment-type=atlas&interface=driver&language=python)
+  - [Install the MongoDB Controllers for Kubernetes Operator](https://www.mongodb.com/docs/kubernetes/current/tutorial/install-k8s-operator/)
+- [Demo Deployment Using Docker Compose](./docs/deploy-docker-compose.md)
+- [Demo Deployment Using Kubernetes](./docs/deploy-kubernetes.md)
+- [Single vs Separate Vector Search Indexes in MongoDB Atlas](./docs/indices.md)
+- [Model Usage and Adaptation Patterns for LLM-based Systems](./docs/patterns-model.md)
+- [Advanced RAG Solution Patterns with MongoDB Vector Search](./docs/patterns-rag.md)
+- [Combining RAG and Model-Usage Patterns into a Practical Roadmap](./docs/patterns-road.md)
 
 ### Tools
 - LangChain

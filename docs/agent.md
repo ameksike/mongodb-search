@@ -1,5 +1,7 @@
 Simple Agent Demo
 
+![](./img/solutions.gif)
+
 ```js
 import { ChatOllama } from "@langchain/ollama";
 

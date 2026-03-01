@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-watch
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/name: agent-watch
+    app.kubernetes.io/part-of: mongodb-search
+spec:
+  replicas: 1                 # single replica — change stream listener
+  selector:
+    matchLabels:
+      app: agent-watch
+  strategy:
+    type: Recreate            # avoid duplicate stream consumers
+  template:
+    metadata:
+      labels:
+        app: agent-watch
+    spec:
+      containers:
+        - name: agent-watch
+          image: mongodb-search:latest    # replace with your registry image
+          imagePullPolicy: IfNotPresent
+          command: ["npm", "run", "agent:watch"]
+          envFrom:
+            - configMapRef:
+                name: mongodb-search-config
+            - secretRef:
+                name: mongodb-search-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

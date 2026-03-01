@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-search-config
+  namespace: mongodb-search
+  labels:
+    app.kubernetes.io/part-of: mongodb-search
+data:
+  # MongoDB
+  MONGODB_DB: "rag"
+  MONGODB_COLLECTION: "films"
+  # Vector / Embeddings
+  VECTOR_INDEX_TYPE: "both"
+  VOYAGE_API_URL: "https://api.voyageai.com/v1/embeddings"
+  VOYAGE_MODEL: "voyage-4-large"
+  # LLM
+  LLM_CALL: "false"
+  LLM_MODEL: "phi3:mini"
+  LLM_URL: "http://ollama.mongodb-search.svc.cluster.local:11434"
+  # Reranking
+  RAG_RERANK_TEXT_ON: "true"
+  RAG_RERANK_IMAGE_ON: "false"
+  # Storage
+  STORE_DRIVER: "MinIO"
+  STORE_BUCKET: "films"
+  STORE_ENDPOINT: "http://minio.mongodb-search.svc.cluster.local:9000"
+  # Kozen trigger
+  KOZEN_LOG_LEVEL: "INFO"
+  KOZEN_LOG_TYPE: "object"
+  KOZEN_MODULE_LOAD: "@kozen/trigger"
+  KOZEN_TRIGGER_FILE: "/app/src/agent/bin/watch.js"
+  KOZEN_TRIGGER_DATABASE: "rag"
+  KOZEN_TRIGGER_COLLECTION: "films"
+  KOZEN_TRIGGER_URI: "MONGODB_URI"
+  KOZEN_LOG_MDB_ENABLED: "false"
