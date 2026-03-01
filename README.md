@@ -302,7 +302,8 @@ GET http://127.0.0.1:9001/login
 ## 🔗 References
 
 ### MongoDB search
-
+- [Demo Deployment Using Docker Compose](./docs/deploy-docker-compose.md)
+- [Demo Deployment Using Kubernetes](./docs/deploy-kubernetes.md)
 - [What is MongoDB Search?](https://www.mongodb.com/docs/atlas/atlas-search/)
     - [Full-Text Search](https://www.mongodb.com/resources/basics/full-text-search)
     - [Hybrid Search](https://www.mongodb.com/docs/atlas/atlas-search/tutorial/hybrid-search/)
