@@ -13,6 +13,7 @@ This module is a **Retrieval-Augmented Generation (RAG)** solution that answers 
 
 All runnable commands are defined in the project root **`package.json`** and must be run from the **project root** (not from `src/agent`).
 
+![](../../docs/img/diagram.jpg)
 ---
 
 ## Prerequisites
