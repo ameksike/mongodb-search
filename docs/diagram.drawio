@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36" version="29.6.3">
+  <diagram name="Page-1" id="1bXjAQExeN4YjJYkimkj">
+    <mxGraphModel dx="3200" dy="2344" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-8" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="-MqjwGMhuk5N1scPCGpA-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-9" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-MqjwGMhuk5N1scPCGpA-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-14" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-MqjwGMhuk5N1scPCGpA-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;API&amp;nbsp;&lt;/b&gt;&lt;div&gt;Web Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-3" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;div&gt;&lt;span style=&quot;font-size: 12px;&quot;&gt;&lt;b&gt;Business Data&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;MongoDB" vertex="1">
+          <mxGeometry height="80" width="110" x="480" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Images&lt;/b&gt;&lt;div&gt;MinIO Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="480" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-7" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="-MqjwGMhuk5N1scPCGpA-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-6" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Actor" vertex="1">
+          <mxGeometry height="60" width="30" x="-110" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-12" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="-MqjwGMhuk5N1scPCGpA-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-17" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="-MqjwGMhuk5N1scPCGpA-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Watcher /&amp;nbsp;Trigger&amp;nbsp;&lt;/b&gt;&lt;br&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent;&quot;&gt;ChangeStream Client&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="155" x="650" y="-60" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;LLM&lt;/b&gt;&lt;div&gt;oLLama Server&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="480" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-15" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;div&gt;&lt;b&gt;NAS&lt;/b&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="80" x="580" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="-MqjwGMhuk5N1scPCGpA-16" edge="1" parent="1" source="-MqjwGMhuk5N1scPCGpA-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="-MqjwGMhuk5N1scPCGpA-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
