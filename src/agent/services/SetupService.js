@@ -32,6 +32,15 @@ export class SetupService {
         this.enableValidation = options.enableValidation ?? false;
         this.indexType = options.indexType ?? 'both';
         this.clean = !!options.clean;
+        // Search capability: null=auto-probe, true=force-enabled, false=skip all search index ops.
+        // Auto-probe tries listSearchIndexes on first call; fails gracefully on CE / EA without mongot.
+        const envSearch = process.env.MONGODB_SEARCH;
+        const searchEnabled = options.searchEnabled
+            ?? (envSearch === 'true' || envSearch === '1' ? true
+                : envSearch === 'false' || envSearch === '0' ? false
+                : null);
+        this._searchUnsupported = searchEnabled === false;
+        this._searchForced = searchEnabled === true;
     }
 
     /**
@@ -100,6 +109,11 @@ export class SetupService {
     async ensureVectorSearchIndex() {
         const collection = this.db.collection(this.collectionName);
         const existingIndexes = await this.listSearchIndexes(collection);
+
+        if (this._searchUnsupported) {
+            logger.warn(COMPONENT, 'Search indexes skipped: Search Index Management not available on this deployment. Requires Atlas M10+ or Enterprise Advanced with mongot running. Set MONGODB_SEARCH=false to silence, or MONGODB_SEARCH=true to force attempts.');
+            return;
+        }
 
         this.clean && await this.cleanSearchIndexes(collection);
 
@@ -234,20 +248,24 @@ export class SetupService {
     }
 
     /**
-     * Helper to list existing search indexes on the collection (MongoDB 7.0+), returns empty if not supported. Used to avoid duplicate index creation. Logs a warning if listing is not supported (e.g. older MongoDB version).
-     * @param {import('mongodb').Collection} collection 
-     * @returns {string[]} List of existing search indexes or empty if not supported
+     * List existing search indexes. Returns [] if Search Index Management is unavailable
+     * (Community Edition, Enterprise Advanced without mongot, Atlas free tier).
+     * Sets _searchUnsupported=true on first failure so subsequent calls are skipped.
+     * @param {import('mongodb').Collection} collection
+     * @returns {Promise<object[]>}
      */
     async listSearchIndexes(collection) {
+        if (this._searchUnsupported) return [];
         const existing = [];
         try {
             const indexes = collection.listSearchIndexes();
             for await (const idx of indexes) existing.push(idx);
         } catch (err) {
-            logger.warn(COMPONENT, 'Could not list search indexes', { reason: err.message });
-            return;
+            logger.warn(COMPONENT, 'Search Index Management unavailable', { reason: err.message });
+            if (!this._searchForced) this._searchUnsupported = true;
+            return [];
         }
-        logger.info(COMPONENT, 'Existing Indexes', { indexes: JSON.stringify(existing, null, 2) });
+        logger.info(COMPONENT, 'Existing search indexes', { count: existing.length });
         return existing;
     }
 

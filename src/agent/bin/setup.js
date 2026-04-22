@@ -11,6 +11,7 @@ const {
     MONGODB_DB = 'rag',                          // Database name
     MONGODB_COLLECTION = 'films',                // Collection to store documents with embeddings
     MONGODB_VECTOR_VALIDATION = 'true',          // 'true' to enforce schema (title, description, coverImage, embedding.text, embedding.image)
+    MONGODB_SEARCH,                              // 'auto'(default)|'true'|'false' — controls search index setup
     VECTOR_INDEX_NAME = 'rag_vector',            // Base name for vector indexes; actual index names will be `${VECTOR_INDEX_NAME}_text_index` and `${VECTOR_INDEX_NAME}_image_index`
     VECTOR_DIMENSIONS = '1024',                  // Used for both if VECTOR_DIMENSIONS_TEXT/IMAGE not set
     VECTOR_DIMENSIONS_TEXT,                      // Text embedding size (e.g. Voyage 1024)
@@ -32,6 +33,9 @@ try {
     await client.connect();
     const db = client.db(MONGODB_DB);
     const dim = Number(VECTOR_DIMENSIONS);
+    const searchEnabled = MONGODB_SEARCH === 'true' || MONGODB_SEARCH === '1' ? true
+        : MONGODB_SEARCH === 'false' || MONGODB_SEARCH === '0' ? false
+        : null; // null = auto-probe
     const setupService = new SetupService(db, {
         collectionName: MONGODB_COLLECTION,
         vectorIndexName: VECTOR_INDEX_NAME,
@@ -41,7 +45,8 @@ try {
         similarity: VECTOR_SIMILARITY,
         enableValidation: MONGODB_VECTOR_VALIDATION.toLowerCase() === 'true',
         indexType: VECTOR_INDEX_TYPE,
-        clean: VECTOR_INDEX_CLEAN !== 'false'
+        clean: VECTOR_INDEX_CLEAN !== 'false',
+        searchEnabled,
     });
     logger.info(COMPONENT, 'Running setup', { vectorIndexName: VECTOR_INDEX_NAME, dimensionsText: setupService.dimensionsText, dimensionsImage: setupService.dimensionsImage });
     await setupService.run();

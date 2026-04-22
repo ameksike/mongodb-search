@@ -64,8 +64,13 @@ export class RagService {
             },
         ];
         logger.info(COMPONENT, 'Vector search', { indexName, k, type });
-        const docs = await this.collection.aggregate(pipeline).toArray();
-        return docs;
+        try {
+            const docs = await this.collection.aggregate(pipeline).toArray();
+            return docs;
+        } catch (err) {
+            logger.warn(COMPONENT, 'Vector search failed', { error: err.message });
+            return [];
+        }
     }
 
     /**
