@@ -111,7 +111,13 @@ export class SetupService {
         const existingIndexes = await this.listSearchIndexes(collection);
 
         if (this._searchUnsupported) {
-            logger.warn(COMPONENT, 'Search indexes skipped: Search Index Management not available on this deployment. Requires Atlas M10+ or Enterprise Advanced with mongot running. Set MONGODB_SEARCH=false to silence, or MONGODB_SEARCH=true to force attempts.');
+            logger.warn(COMPONENT, 'Search indexes skipped — collection is ready but no vector or full-text search indexes were created', {
+                reason: 'Search Index Management service unreachable (mongot not running or not configured).',
+                skipped_indexes: `${this.vectorIndexName}_text_index, ${this.vectorIndexName}_image_index`,
+                capabilities_lost: '$vectorSearch, $search, $rankFusion — RAG /ask endpoints will return empty context.',
+                next_step_ea: 'Start and configure mongot on your Enterprise Advanced server, then re-run agent:setup.',
+                next_step_suppress: 'If running without search intentionally, set MONGODB_SEARCH=false in .env to skip this check.',
+            });
             return;
         }
 
@@ -120,10 +126,10 @@ export class SetupService {
         if (this.indexType === 'composed') {
             await this.createComposedIndex(collection, existingIndexes);
         }
-        if (this.indexType === 'text' || this.indexType === 'both') {
+        if (!this._searchUnsupported && (this.indexType === 'text' || this.indexType === 'both')) {
             await this.createTextIndex(collection, existingIndexes);
         }
-        if (this.indexType === 'image' || this.indexType === 'both') {
+        if (!this._searchUnsupported && (this.indexType === 'image' || this.indexType === 'both')) {
             await this.createImageIndex(collection, existingIndexes);
         }
 
@@ -276,8 +282,20 @@ export class SetupService {
             const indexes = collection.listSearchIndexes();
             for await (const idx of indexes) existing.push(idx);
         } catch (err) {
-            logger.warn(COMPONENT, 'Search Index Management unavailable', { reason: err.message });
-            if (!this._searchForced) this._searchUnsupported = true;
+            if (!this._searchForced) {
+                this._searchUnsupported = true;
+                logger.warn(COMPONENT, 'Search Index Management probe failed — search indexes will be skipped', {
+                    reason: err.message,
+                    diagnosis: 'mongot is not running or not reachable. Expected on CE, EA without mongot, and Atlas M0/M2.',
+                    impact: '$vectorSearch, $search and $rankFusion will be unavailable. RAG query endpoints will return empty results.',
+                    fix_ea: 'Configure and start mongot alongside mongod (see MongoDB Atlas Search for Enterprise Advanced docs).',
+                    fix_suppress: 'Set MONGODB_SEARCH=false in .env to skip this probe and suppress these messages.',
+                });
+            } else {
+                logger.warn(COMPONENT, 'Search Index Management probe failed (MONGODB_SEARCH=true — forced mode, will attempt index creation anyway)', {
+                    reason: err.message,
+                });
+            }
             return [];
         }
         logger.info(COMPONENT, 'Existing search indexes', { count: existing.length });
