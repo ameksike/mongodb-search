@@ -151,32 +151,37 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search composed index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.text',
-                        numDimensions: this.dimensionsText || 512,
-                        similarity: this.similarity,
-                    },
-                    {
-                        type: 'vector',
-                        path: 'embedding.image',
-                        numDimensions: this.dimensionsImage || 1024,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ],
-            },
-        });
-        logger.info(COMPONENT, 'Composed Vector Search index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.text',
+                            numDimensions: this.dimensionsText || 512,
+                            similarity: this.similarity,
+                        },
+                        {
+                            type: 'vector',
+                            path: 'embedding.image',
+                            numDimensions: this.dimensionsImage || 1024,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Composed Vector Search index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create composed Vector Search index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**
@@ -191,26 +196,31 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search Text index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.text',
-                        numDimensions: this.dimensionsText || 512,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ]
-            }
-        });
-        logger.info(COMPONENT, 'Vector Search Text index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.text',
+                            numDimensions: this.dimensionsText || 512,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Vector Search Text index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create Vector Search Text index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**
@@ -225,26 +235,31 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search Image index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.image',
-                        numDimensions: this.dimensionsImage || 1024,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ]
-            }
-        });
-        logger.info(COMPONENT, 'Vector Search Image index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.image',
+                            numDimensions: this.dimensionsImage || 1024,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Vector Search Image index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create Vector Search Image index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**

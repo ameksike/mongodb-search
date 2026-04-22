@@ -189,6 +189,19 @@ INFO  setup | Setup complete
 
 The collection is created and schema validation is applied. Only vector and full-text search indexes are absent. This is expected when mongot is not running — set `MONGODB_SEARCH=false` to suppress the messages.
 
+### `MONGODB_SEARCH=true` with an unreachable Search Index Management service
+
+Setting `MONGODB_SEARCH=true` disables the early-exit probe — the application assumes search is available and proceeds to call `createSearchIndex`. If the Search Index Management service is still unreachable at that point, each `create*Index` call catches the failure individually, logs an ERROR per index, and marks search as unsupported for the rest of the session. Setup still completes without crashing.
+
+```
+WARN  service:setup | Search Index Management unavailable | reason=...
+ERROR service:setup | Failed to create Vector Search Text index  | index=rag_vector_text_index error=Error connecting to Search Index Management service.
+ERROR service:setup | Failed to create Vector Search Image index | index=rag_vector_image_index error=Error connecting to Search Index Management service.
+INFO  setup | Setup complete
+```
+
+Use `MONGODB_SEARCH=true` only to retry after a transient failure on a deployment where mongot is confirmed running. If setup consistently produces these ERRORs, verify mongot connectivity rather than relying on the forced flag.
+
 ### `$vectorSearch` returns empty at query time
 
 When the server is running against a deployment without mongot and a RAG query is issued, `retrieveRelevantChunks()` catches the aggregation failure and returns an empty array:
@@ -211,7 +224,7 @@ Compatibility handling is intentionally contained within the service layer. No c
 
 | File | Responsibility |
 |------|---------------|
-| [`src/agent/services/SetupService.js`](../src/agent/services/SetupService.js) | Probe via `listSearchIndexes`; flag propagation; graceful skip of index creation |
+| [`src/agent/services/SetupService.js`](../src/agent/services/SetupService.js) | Probe via `listSearchIndexes`; flag propagation; graceful skip and per-index try/catch on `createSearchIndex` |
 | [`src/agent/services/RagService.js`](../src/agent/services/RagService.js) | Try/catch on `$vectorSearch`; existing try/catch on `$search` |
 | [`src/agent/bin/setup.js`](../src/agent/bin/setup.js) | Reads `MONGODB_SEARCH` and passes `searchEnabled` to `SetupService` |
 
