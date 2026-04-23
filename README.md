@@ -2,7 +2,7 @@
 
 This repository explores **different search capabilities on MongoDB** and **applications that build on them** — from simple search demos to **AI agent–based** solutions.
 
----
+--- ---
 
 ## 📑 Menu – Jump to a Topic
 

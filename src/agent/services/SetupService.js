@@ -32,6 +32,15 @@ export class SetupService {
         this.enableValidation = options.enableValidation ?? false;
         this.indexType = options.indexType ?? 'both';
         this.clean = !!options.clean;
+        // Search capability: null=auto-probe, true=force-enabled, false=skip all search index ops.
+        // Auto-probe tries listSearchIndexes on first call; fails gracefully on CE / EA without mongot.
+        const envSearch = process.env.MONGODB_SEARCH;
+        const searchEnabled = options.searchEnabled
+            ?? (envSearch === 'true' || envSearch === '1' ? true
+                : envSearch === 'false' || envSearch === '0' ? false
+                : null);
+        this._searchUnsupported = searchEnabled === false;
+        this._searchForced = searchEnabled === true;
     }
 
     /**
@@ -101,15 +110,26 @@ export class SetupService {
         const collection = this.db.collection(this.collectionName);
         const existingIndexes = await this.listSearchIndexes(collection);
 
+        if (this._searchUnsupported) {
+            logger.warn(COMPONENT, 'Search indexes skipped — collection is ready but no vector or full-text search indexes were created', {
+                reason: 'Search Index Management service unreachable (mongot not running or not configured).',
+                skipped_indexes: `${this.vectorIndexName}_text_index, ${this.vectorIndexName}_image_index`,
+                capabilities_lost: '$vectorSearch, $search, $rankFusion — RAG /ask endpoints will return empty context.',
+                next_step_ea: 'Start and configure mongot on your Enterprise Advanced server, then re-run agent:setup.',
+                next_step_suppress: 'If running without search intentionally, set MONGODB_SEARCH=false in .env to skip this check.',
+            });
+            return;
+        }
+
         this.clean && await this.cleanSearchIndexes(collection);
 
         if (this.indexType === 'composed') {
             await this.createComposedIndex(collection, existingIndexes);
         }
-        if (this.indexType === 'text' || this.indexType === 'both') {
+        if (!this._searchUnsupported && (this.indexType === 'text' || this.indexType === 'both')) {
             await this.createTextIndex(collection, existingIndexes);
         }
-        if (this.indexType === 'image' || this.indexType === 'both') {
+        if (!this._searchUnsupported && (this.indexType === 'image' || this.indexType === 'both')) {
             await this.createImageIndex(collection, existingIndexes);
         }
 
@@ -137,32 +157,37 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search composed index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.text',
-                        numDimensions: this.dimensionsText || 512,
-                        similarity: this.similarity,
-                    },
-                    {
-                        type: 'vector',
-                        path: 'embedding.image',
-                        numDimensions: this.dimensionsImage || 1024,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ],
-            },
-        });
-        logger.info(COMPONENT, 'Composed Vector Search index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.text',
+                            numDimensions: this.dimensionsText || 512,
+                            similarity: this.similarity,
+                        },
+                        {
+                            type: 'vector',
+                            path: 'embedding.image',
+                            numDimensions: this.dimensionsImage || 1024,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Composed Vector Search index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create composed Vector Search index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**
@@ -177,26 +202,31 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search Text index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.text',
-                        numDimensions: this.dimensionsText || 512,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ]
-            }
-        });
-        logger.info(COMPONENT, 'Vector Search Text index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.text',
+                            numDimensions: this.dimensionsText || 512,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Vector Search Text index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create Vector Search Text index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**
@@ -211,43 +241,64 @@ export class SetupService {
             logger.info(COMPONENT, 'Vector Search Image index already exists', { index: indexName });
             return;
         }
-        await collection.createSearchIndex({
-            name: indexName,
-            type: 'vectorSearch',
-            definition: {
-                fields: [
-                    {
-                        type: 'vector',
-                        path: 'embedding.image',
-                        numDimensions: this.dimensionsImage || 1024,
-                        similarity: this.similarity || 'cosine'
-                    },
-                ]
-            }
-        });
-        logger.info(COMPONENT, 'Vector Search Image index created', {
-            index: indexName,
-            dimensionsText: this.dimensionsText,
-            dimensionsImage: this.dimensionsImage,
-            similarity: this.similarity,
-        });
+        try {
+            await collection.createSearchIndex({
+                name: indexName,
+                type: 'vectorSearch',
+                definition: {
+                    fields: [
+                        {
+                            type: 'vector',
+                            path: 'embedding.image',
+                            numDimensions: this.dimensionsImage || 1024,
+                            similarity: this.similarity || 'cosine',
+                        },
+                    ],
+                },
+            });
+            logger.info(COMPONENT, 'Vector Search Image index created', {
+                index: indexName,
+                dimensionsText: this.dimensionsText,
+                dimensionsImage: this.dimensionsImage,
+                similarity: this.similarity,
+            });
+        } catch (err) {
+            logger.error(COMPONENT, 'Failed to create Vector Search Image index', { index: indexName, error: err.message });
+            this._searchUnsupported = true;
+        }
     }
 
     /**
-     * Helper to list existing search indexes on the collection (MongoDB 7.0+), returns empty if not supported. Used to avoid duplicate index creation. Logs a warning if listing is not supported (e.g. older MongoDB version).
-     * @param {import('mongodb').Collection} collection 
-     * @returns {string[]} List of existing search indexes or empty if not supported
+     * List existing search indexes. Returns [] if Search Index Management is unavailable
+     * (Community Edition, Enterprise Advanced without mongot, Atlas free tier).
+     * Sets _searchUnsupported=true on first failure so subsequent calls are skipped.
+     * @param {import('mongodb').Collection} collection
+     * @returns {Promise<object[]>}
      */
     async listSearchIndexes(collection) {
+        if (this._searchUnsupported) return [];
         const existing = [];
         try {
             const indexes = collection.listSearchIndexes();
             for await (const idx of indexes) existing.push(idx);
         } catch (err) {
-            logger.warn(COMPONENT, 'Could not list search indexes', { reason: err.message });
-            return;
+            if (!this._searchForced) {
+                this._searchUnsupported = true;
+                logger.warn(COMPONENT, 'Search Index Management probe failed — search indexes will be skipped', {
+                    reason: err.message,
+                    diagnosis: 'mongot is not running or not reachable. Expected on CE, EA without mongot, and Atlas M0/M2.',
+                    impact: '$vectorSearch, $search and $rankFusion will be unavailable. RAG query endpoints will return empty results.',
+                    fix_ea: 'Configure and start mongot alongside mongod (see MongoDB Atlas Search for Enterprise Advanced docs).',
+                    fix_suppress: 'Set MONGODB_SEARCH=false in .env to skip this probe and suppress these messages.',
+                });
+            } else {
+                logger.warn(COMPONENT, 'Search Index Management probe failed (MONGODB_SEARCH=true — forced mode, will attempt index creation anyway)', {
+                    reason: err.message,
+                });
+            }
+            return [];
         }
-        logger.info(COMPONENT, 'Existing Indexes', { indexes: JSON.stringify(existing, null, 2) });
+        logger.info(COMPONENT, 'Existing search indexes', { count: existing.length });
         return existing;
     }
 
