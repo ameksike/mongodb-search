@@ -76,8 +76,8 @@ async function searchProducts(
 // const products = db.collection("products");
 // async function embedQuery(text) { ... }
 const productSearch = {
-    // Autocomplete search for product names and brands.
-    async autocomplete(query, limit = 8) {
+    // Autocomplete, exact, and text search implementations for product search.
+    async autocomplete(query, { limit = 8 } = {}) {
         const q = query.trim();
         if (!q) return [];
 
@@ -107,18 +107,11 @@ const productSearch = {
                 }
             },
             { $limit: limit },
-            {
-                $project: {
-                    name: 1,
-                    brand: 1,
-                    price: 1
-                }
-            }
+            { $project: { name: 1, brand: 1, price: 1 } }
         ]).toArray();
     },
-
-    // Exact search for product codes (SKU or GTIN).
-    async exact(code) {
+    // Exact product code search implementation.
+    async exact(code, { limit = 10 } = {}) {
         const normalizedCode = code
             .trim()
             .toUpperCase()
@@ -131,11 +124,10 @@ const productSearch = {
                 { skuNormalized: normalizedCode },
                 { gtinNormalized: normalizedCode }
             ]
-        }).limit(10).toArray();
+        }).limit(limit).toArray();
     },
-
-    // Full-text search for product names, brands, and descriptions.
-    async text(query, limit = 20) {
+    // Text search implementation for products.
+    async text(query, { limit = 20 } = {}) {
         const q = query.trim();
         if (!q) return [];
 
@@ -161,8 +153,8 @@ const productSearch = {
         ]).toArray();
     },
 
-    // Hybrid search combining full-text and vector search for product names, brands, and descriptions.
-    async hybrid(query, limit = 10) {
+    // Hybrid search implementation combining lexical and semantic search.
+    async hybrid(query, { limit = 10 } = {}) {
         const q = query.trim();
         if (!q) return [];
 
@@ -201,10 +193,7 @@ const productSearch = {
                         }
                     },
                     combination: {
-                        weights: {
-                            lexical: 0.7,
-                            semantic: 0.3
-                        }
+                        weights: { lexical: 0.7, semantic: 0.3 }
                     }
                 }
             },
@@ -220,6 +209,7 @@ const productSearch = {
         ]).toArray();
     }
 };
+
 
 // While the user is typing: autocomplete suggestions
 const suggestions = await searchProducts(searchInput.value, {
