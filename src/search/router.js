@@ -1,3 +1,86 @@
+// .... Indexes for product identifiers  ...........................................................
+// Exact-match indexes for normalized product identifiers
+db.products.createIndex(
+    { skuNormalized: 1 },
+    { name: "sku_normalized_idx" }
+);
+
+db.products.createIndex(
+    { gtinNormalized: 1 },
+    { name: "gtin_normalized_idx" }
+);
+
+// Atlas Search index for product autocomplete
+db.products.createSearchIndex("product_autocomplete", {
+    mappings: {
+        dynamic: false,
+        fields: {
+            name: [
+                {
+                    type: "autocomplete",
+                    tokenization: "edgeGram",
+                    minGrams: 2,
+                    maxGrams: 15,
+                    foldDiacritics: true
+                }
+            ],
+            brand: [
+                {
+                    type: "autocomplete",
+                    tokenization: "edgeGram",
+                    minGrams: 2,
+                    maxGrams: 15,
+                    foldDiacritics: true
+                }
+            ]
+        }
+    }
+});
+
+// Atlas Search index for full-text product search
+db.products.createSearchIndex("products_text", {
+    mappings: {
+        dynamic: false,
+        fields: {
+            name: {
+                type: "string",
+                analyzer: "lucene.standard"
+            },
+            brand: {
+                type: "string",
+                analyzer: "lucene.standard"
+            },
+            description: {
+                type: "string",
+                analyzer: "lucene.standard"
+            }
+        }
+    }
+});
+
+
+// Atlas Vector Search index for semantic product search
+db.products.createSearchIndex(
+    "products_vector",
+    "vectorSearch",
+    {
+        fields: [
+            {
+                type: "vector",
+                path: "embedding",
+                numDimensions: 1536, // Replace with your embedding model's dimension count
+                similarity: "cosine"
+            },
+
+            // Add filter fields only if the query uses them as Vector Search pre-filters
+            { type: "filter", path: "active" },
+            { type: "filter", path: "market" },
+            { type: "filter", path: "category" }
+        ]
+    }
+);
+
+// .................................................................................................
 // Regular expression patterns for identifying product codes. GTIN (Global Trade Item Number) and SKU (Stock Keeping Unit) are supported.
 const GTIN_RE = /^(?:\d{8}|\d{12}|\d{13}|\d{14})$/;
 
@@ -91,14 +174,16 @@ const productSearch = {
                                 autocomplete: {
                                     query: q,
                                     path: "name",
-                                    tokenOrder: "sequential"
+                                    tokenOrder: "sequential",
+                                    score: { boost: { value: 5 } }
                                 }
                             },
                             {
                                 autocomplete: {
                                     query: q,
                                     path: "brand",
-                                    tokenOrder: "sequential"
+                                    tokenOrder: "sequential",
+                                    score: { boost: { value: 2 } }
                                 }
                             }
                         ],
@@ -107,7 +192,7 @@ const productSearch = {
                 }
             },
             { $limit: limit },
-            { $project: { name: 1, brand: 1, price: 1 } }
+            { $project: { name: 1, brand: 1, price: 1, score: { $meta: "searchScore" } } }
         ]).toArray();
     },
     // Exact product code search implementation.
