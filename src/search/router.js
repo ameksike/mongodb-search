@@ -71,3 +71,164 @@ async function searchProducts(
     const limit = route.type === "autocomplete" ? 8 : 20;
     return search[route.type](route.query, { limit });
 }
+
+// Assumed dependencies:
+// const products = db.collection("products");
+// async function embedQuery(text) { ... }
+const productSearch = {
+    // Autocomplete search for product names and brands.
+    async autocomplete(query, limit = 8) {
+        const q = query.trim();
+        if (!q) return [];
+
+        return products.aggregate([
+            {
+                $search: {
+                    index: "product_autocomplete",
+                    compound: {
+                        should: [
+                            {
+                                autocomplete: {
+                                    query: q,
+                                    path: "name",
+                                    tokenOrder: "sequential"
+                                }
+                            },
+                            {
+                                autocomplete: {
+                                    query: q,
+                                    path: "brand",
+                                    tokenOrder: "sequential"
+                                }
+                            }
+                        ],
+                        minimumShouldMatch: 1
+                    }
+                }
+            },
+            { $limit: limit },
+            {
+                $project: {
+                    name: 1,
+                    brand: 1,
+                    price: 1
+                }
+            }
+        ]).toArray();
+    },
+
+    // Exact search for product codes (SKU or GTIN).
+    async exact(code) {
+        const normalizedCode = code
+            .trim()
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "");
+
+        if (!normalizedCode) return [];
+
+        return products.find({
+            $or: [
+                { skuNormalized: normalizedCode },
+                { gtinNormalized: normalizedCode }
+            ]
+        }).limit(10).toArray();
+    },
+
+    // Full-text search for product names, brands, and descriptions.
+    async text(query, limit = 20) {
+        const q = query.trim();
+        if (!q) return [];
+
+        return products.aggregate([
+            {
+                $search: {
+                    index: "products_text",
+                    text: {
+                        query: q,
+                        path: ["name", "brand", "description"]
+                    }
+                }
+            },
+            { $limit: limit },
+            {
+                $project: {
+                    name: 1,
+                    brand: 1,
+                    price: 1,
+                    score: { $meta: "searchScore" }
+                }
+            }
+        ]).toArray();
+    },
+
+    // Hybrid search combining full-text and vector search for product names, brands, and descriptions.
+    async hybrid(query, limit = 10) {
+        const q = query.trim();
+        if (!q) return [];
+
+        const queryVector = await embedQuery(q);
+        const candidateLimit = 30;
+
+        return products.aggregate([
+            {
+                $rankFusion: {
+                    input: {
+                        pipelines: {
+                            lexical: [
+                                {
+                                    $search: {
+                                        index: "products_text",
+                                        text: {
+                                            query: q,
+                                            path: ["name", "brand", "description"]
+                                        }
+                                    }
+                                },
+                                { $limit: candidateLimit }
+                            ],
+                            semantic: [
+                                {
+                                    $vectorSearch: {
+                                        index: "products_vector",
+                                        path: "embedding",
+                                        queryVector,
+                                        exact: false,
+                                        numCandidates: 300,
+                                        limit: candidateLimit
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    combination: {
+                        weights: {
+                            lexical: 0.7,
+                            semantic: 0.3
+                        }
+                    }
+                }
+            },
+            { $limit: limit },
+            {
+                $project: {
+                    name: 1,
+                    brand: 1,
+                    price: 1,
+                    score: { $meta: "score" }
+                }
+            }
+        ]).toArray();
+    }
+};
+
+// While the user is typing: autocomplete suggestions
+const suggestions = await searchProducts(searchInput.value, {
+    submitted: false,
+    search: productSearch
+});
+
+// When the search is submitted: full search results
+const results = await searchProducts(searchInput.value, {
+    submitted: true,
+    search: productSearch
+});
