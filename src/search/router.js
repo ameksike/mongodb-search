@@ -1,11 +1,19 @@
+// Regular expression patterns for identifying product codes. GTIN (Global Trade Item Number) and SKU (Stock Keeping Unit) are supported.
 const GTIN_RE = /^(?:\d{8}|\d{12}|\d{13}|\d{14})$/;
 
 // Example only: adapt this pattern to your store's SKU format.
 const SKU_RE = /^SKU-[A-Z0-9-]+$/i;
 
-const DESCRIPTION_CUE =
-    /\b(for|with|without|ideal|suitable)\b/i;
+// Keywords that indicate a descriptive product query.
+const DESCRIPTION_CUE = /\b(for|with|without|ideal|suitable)\b/i;
 
+/**
+ * Chooses the appropriate search strategy based on the query and submission status.
+ * @param {string} query The search query entered by the user.
+ * @param {Object} param1 Options object.
+ * @param {boolean} param1.submitted Indicates if the search was submitted.
+ * @returns {Object} An object describing the chosen search strategy and the normalized query.
+ */
 function chooseSearch(query, { submitted = false } = {}) {
     const q = query.trim();
 
@@ -34,6 +42,15 @@ function chooseSearch(query, { submitted = false } = {}) {
     return { type: "text", query: q };
 }
 
+
+/**
+ * Performs a product search using the chosen search strategy.
+ * @param {string} query The search query entered by the user.
+ * @param {Object} param1 Options object.
+ * @param {boolean} param1.submitted Indicates if the search was submitted.
+ * @param {Object} param1.search The search implementation with exact, text, hybrid, and autocomplete methods.
+ * @returns {Promise<Array>} A promise that resolves to an array of search results.
+ */
 async function searchProducts(
     query,
     { submitted = false, search } = {}
